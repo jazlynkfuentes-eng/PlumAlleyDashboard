@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+
 import { prisma } from "@/lib/prisma";
 
 function authorized(req: Request) {
@@ -11,10 +11,7 @@ function authorized(req: Request) {
 }
 
 export async function GET(req: Request) {
-  const session = await auth();
-  if (!session?.user && !authorized(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+
 
   const { searchParams } = new URL(req.url);
   const limit = Math.min(Math.max(Number(searchParams.get("limit") ?? "1"), 1), 20);

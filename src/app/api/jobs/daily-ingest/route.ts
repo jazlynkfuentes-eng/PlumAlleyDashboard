@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+
 import { runDailyIngest } from "@/lib/ingest";
 
 function authorized(req: Request) {

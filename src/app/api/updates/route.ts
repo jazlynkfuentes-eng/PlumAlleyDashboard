@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+
 import { ingestMany, ingestUpdateRow, type IngestUpdateInput } from "@/lib/ingest-shared";
 
 function authorized(req: Request) {
@@ -15,10 +15,9 @@ function authorized(req: Request) {
  * Fields: company_id|companyId|company_name|companySlug, source_type, content, source_url, published_at
  */
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user && !authorized(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  if (!authorized(req)) {
+  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+}
 
   const body = await req.json().catch(() => null);
   if (!body) {
