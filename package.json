@@ -1,0 +1,53 @@
+{
+  "name": "portfolio-intel",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:setup": "prisma db push && tsx prisma/seed.ts",
+    "verify:dates": "tsx scripts/verify-dates.ts",
+    "ingest:linkedin": "tsx scripts/run-linkedin-ingest.ts",
+    "purge:fakes": "tsx scripts/purge-fakes.ts",
+    "test:linkedin-endpoint": "tsx scripts/test-linkedin-endpoint.ts",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.110.0",
+    "@prisma/client": "^6.19.3",
+    "apify-client": "^2.23.4",
+    "bcryptjs": "^3.0.3",
+    "cheerio": "^1.2.0",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.4.0",
+    "lucide-react": "^1.23.0",
+    "next": "16.2.10",
+    "next-auth": "^5.0.0-beta.31",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "rss-parser": "^3.13.0",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.10",
+    "prisma": "^6.19.3",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.0",
+    "typescript": "^5"
+  }
+}

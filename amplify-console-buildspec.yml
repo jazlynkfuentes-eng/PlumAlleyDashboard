@@ -1,0 +1,32 @@
+# Paste this into Amplify Console if build settings are still empty ("/" output).
+# App → Hosting → Build settings → Edit → paste entire file → Save → Redeploy.
+#
+# Also verify: App settings → General → Platform = Web Compute
+# Branch → Framework = Next.js - SSR
+
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - node --version
+        - npm ci
+        - npx prisma generate
+    build:
+      commands:
+        - |
+          if [ -n "$DATABASE_URL" ]; then
+            npx prisma db push --accept-data-loss
+            npm run db:seed
+          else
+            echo "WARN: DATABASE_URL not set — skipping prisma db push/seed"
+          fi
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*

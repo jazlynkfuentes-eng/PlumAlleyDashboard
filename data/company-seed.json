@@ -1,0 +1,266 @@
+[
+  {
+    "slug": "arix-technologies",
+    "name": "ARIX Technologies",
+    "sector": "Robotics / Industrial",
+    "website_url": "https://www.arix-tech.com/",
+    "linkedin_url": "https://www.linkedin.com/company/arix-technologies/",
+    "news_feed_url": "https://arixtechnologies.com/news/"
+  },
+  {
+    "slug": "aclima",
+    "name": "Aclima",
+    "sector": "Climate / Air Quality",
+    "website_url": "https://aclima.earth/",
+    "linkedin_url": "https://www.linkedin.com/company/aclima-inc-/",
+    "news_feed_url": "https://www.aclima.io/blog"
+  },
+  {
+    "slug": "aifi",
+    "name": "AiFi",
+    "sector": "Retail Tech / AI",
+    "website_url": "https://www.aifi.com/",
+    "linkedin_url": "https://www.linkedin.com/company/aifi-inc/",
+    "news_feed_url": "https://aifi.com/news/"
+  },
+  {
+    "slug": "air-protein",
+    "name": "Air Protein",
+    "sector": "Food Tech",
+    "website_url": "https://www.airprotein.com/",
+    "linkedin_url": "https://www.linkedin.com/company/air-protein/",
+    "news_feed_url": "https://www.airprotein.com/news"
+  },
+  {
+    "slug": "apellai",
+    "name": "Apellai",
+    "sector": "Health Tech",
+    "website_url": "https://apellai.com/",
+    "linkedin_url": null,
+    "news_feed_url": "https://www.apellai.com/"
+  },
+  {
+    "slug": "ashvattha-therapeutics",
+    "name": "Ashvattha Therapeutics",
+    "sector": "Biotech",
+    "website_url": "https://avttx.com/",
+    "linkedin_url": "https://www.linkedin.com/company/ashvattha-therapeutics-inc/",
+    "news_feed_url": "https://avttx.com/news/"
+  },
+  {
+    "slug": "betteromics",
+    "name": "BetterOmics",
+    "sector": "Bioinformatics",
+    "website_url": "N/A",
+    "linkedin_url": "https://www.linkedin.com/company/betteromics/",
+    "news_feed_url": "https://www.betteromics.com/blog"
+  },
+  {
+    "slug": "bioeclipse",
+    "name": "BioEclipse",
+    "sector": "Biotech / Immuno-oncology",
+    "website_url": "https://www.bioeclipse.com/",
+    "linkedin_url": "https://www.linkedin.com/company/bioeclipse-therapeutics-inc/",
+    "news_feed_url": "https://www.bioeclipse.com/news/"
+  },
+  {
+    "slug": "biobot-analytics",
+    "name": "Biobot Analytics",
+    "sector": "Public Health",
+    "website_url": "https://biobot.io/",
+    "linkedin_url": "https://www.linkedin.com/company/biobot-analytics/",
+    "news_feed_url": "https://biobot.io/blog/"
+  },
+  {
+    "slug": "cordex",
+    "name": "Cordex",
+    "sector": "Climate Science",
+    "website_url": "https://cordex.org/",
+    "linkedin_url": "https://www.linkedin.com/company/wcrp-cordex/",
+    "news_feed_url": "https://cordex.org/news/"
+  },
+  {
+    "slug": "diligent-robotics",
+    "name": "Diligent Robotics",
+    "sector": "Healthcare Robotics",
+    "website_url": "https://www.diligentrobots.com/",
+    "linkedin_url": "https://www.linkedin.com/company/diligent-robotics/",
+    "news_feed_url": "https://www.diligentrobots.com/news"
+  },
+  {
+    "slug": "einride",
+    "name": "Einride",
+    "sector": "Mobility / Logistics",
+    "website_url": "https://www.einride.tech/",
+    "linkedin_url": "https://www.linkedin.com/company/einride/",
+    "news_feed_url": "https://www.einride.tech/news"
+  },
+  {
+    "slug": "epibone",
+    "name": "EpiBone",
+    "sector": "Biotech / Regenerative",
+    "website_url": "https://www.epibone.com/",
+    "linkedin_url": "https://www.linkedin.com/company/epibone/",
+    "news_feed_url": "https://www.epibone.com/news"
+  },
+  {
+    "slug": "evrnu",
+    "name": "Evrnu",
+    "sector": "Materials / Circularity",
+    "website_url": "https://www.evrnu.com/nucycl",
+    "linkedin_url": "https://www.linkedin.com/company/evrnu/",
+    "news_feed_url": "https://www.evrnu.com/news"
+  },
+  {
+    "slug": "fidocure",
+    "name": "FidoCure (One Health)",
+    "sector": "Veterinary Oncology",
+    "website_url": "https://fidocure.com/",
+    "linkedin_url": "https://www.linkedin.com/company/onehealthco/",
+    "news_feed_url": "https://www.fidocure.com/news"
+  },
+  {
+    "slug": "gameto",
+    "name": "Gameto",
+    "sector": "Women's Health / Biotech",
+    "website_url": "https://www.gametogen.com/",
+    "linkedin_url": "https://www.linkedin.com/company/gameto-inc/",
+    "news_feed_url": "https://www.gametogen.com/news"
+  },
+  {
+    "slug": "grey-rhino",
+    "name": "Grey Rhino (One Concern)",
+    "sector": "Climate Risk / Software",
+    "website_url": "https://oneconcern.com/en/",
+    "linkedin_url": "https://www.linkedin.com/company/oneconcern/",
+    "news_feed_url": "https://www.oneconcern.com/news"
+  },
+  {
+    "slug": "helaina",
+    "name": "Helaina",
+    "sector": "Food Tech / Biotech",
+    "website_url": "https://www.myhelaina.com/",
+    "linkedin_url": "https://www.linkedin.com/company/helaina/",
+    "news_feed_url": "https://www.helaina.com/news"
+  },
+  {
+    "slug": "innerplant",
+    "name": "InnerPlant",
+    "sector": "AgTech",
+    "website_url": "https://innerplant.com/",
+    "linkedin_url": "https://www.linkedin.com/company/innerplant/",
+    "news_feed_url": "https://innerplant.com/news/"
+  },
+  {
+    "slug": "juvena-therapeutics",
+    "name": "Juvena Therapeutics",
+    "sector": "Biotech",
+    "website_url": "https://www.juvenatherapeutics.com/",
+    "linkedin_url": "https://www.linkedin.com/company/juvena-therapeutics/",
+    "news_feed_url": "https://www.juvenatherapeutics.com/news"
+  },
+  {
+    "slug": "ketos",
+    "name": "KETOS",
+    "sector": "Water Tech",
+    "website_url": "https://ketos.co/",
+    "linkedin_url": "https://www.linkedin.com/company/ketosinc./",
+    "news_feed_url": "https://www.ketos.co/blog"
+  },
+  {
+    "slug": "kraus-hamdani-aerospace",
+    "name": "Kraus Hamdani Aerospace",
+    "sector": "Aerospace / Defense",
+    "website_url": "https://www.khaero.com/",
+    "linkedin_url": "https://www.linkedin.com/company/kraus-aerospace/?originalSubdomain=ru",
+    "news_feed_url": "https://www.kraushamdaniaero.com/news"
+  },
+  {
+    "slug": "mai",
+    "name": "MAI (formerly Markable)",
+    "sector": "Marketing / AI",
+    "website_url": "https://www.mai.co/",
+    "linkedin_url": "https://www.linkedin.com/company/mai-agents/",
+    "news_feed_url": "https://www.mai.com/blog"
+  },
+  {
+    "slug": "mammoth-biosciences",
+    "name": "Mammoth Biosciences",
+    "sector": "Biotech / CRISPR",
+    "website_url": "https://mammoth.bio/",
+    "linkedin_url": "https://www.linkedin.com/company/mammothbio/",
+    "news_feed_url": "https://mammoth.bio/news/"
+  },
+  {
+    "slug": "node",
+    "name": "Node",
+    "sector": "Platform / Emerging Tech",
+    "website_url": "https://nodejs.org/en",
+    "linkedin_url": "https://www.linkedin.com/company/node-js/",
+    "news_feed_url": "https://www.node.com/blog"
+  },
+  {
+    "slug": "openwater",
+    "name": "Openwater",
+    "sector": "MedTech",
+    "website_url": "https://www.openwater.health/",
+    "linkedin_url": "https://www.linkedin.com/company/openwater-health/",
+    "news_feed_url": "https://www.openwater.health/news"
+  },
+  {
+    "slug": "phoenix-tailings",
+    "name": "Phoenix Tailings",
+    "sector": "Cleantech / Materials",
+    "website_url": "https://phoenixtailings.com/",
+    "linkedin_url": "https://www.linkedin.com/company/phoenixtailings/",
+    "news_feed_url": "https://www.phoenixtailings.com/news"
+  },
+  {
+    "slug": "programmable-medicine",
+    "name": "Programmable Medicine LLC",
+    "sector": "Biotech",
+    "website_url": "https://programmablemedicine.com/",
+    "linkedin_url": null,
+    "news_feed_url": "https://www.programmablemedicine.com/"
+  },
+  {
+    "slug": "siren-biotechnology",
+    "name": "Siren Biotechnology",
+    "sector": "Biotech / Gene Therapy",
+    "website_url": "https://sirenbiotechnology.com/",
+    "linkedin_url": "https://www.linkedin.com/company/siren-biotechnology-inc/",
+    "news_feed_url": "https://www.sirenbiotechnology.com/news"
+  },
+  {
+    "slug": "thinkcerca",
+    "name": "ThinkCERCA",
+    "sector": "EdTech",
+    "website_url": "https://www.thinkcerca.com/",
+    "linkedin_url": "https://www.linkedin.com/company/thinkcerca/",
+    "news_feed_url": "https://www.thinkcerca.com/blog"
+  },
+  {
+    "slug": "tinkergarten",
+    "name": "Tinkergarten",
+    "sector": "EdTech / Outdoor Learning",
+    "website_url": "https://www.tinkergarten.com/",
+    "linkedin_url": "https://www.linkedin.com/company/thinkcerca/",
+    "news_feed_url": "https://www.tinkergarten.com/blog"
+  },
+  {
+    "slug": "vyv",
+    "name": "Vyv (formerly Vital Vio)",
+    "sector": "Lighting / Antimicrobial",
+    "website_url": "https://vyv.tech/",
+    "linkedin_url": "https://www.linkedin.com/company/vyvtech/",
+    "news_feed_url": "https://www.vyv.tech/news"
+  },
+  {
+    "slug": "humans-and",
+    "name": "humans&",
+    "sector": "Consumer / Community",
+    "website_url": "https://humansand.ai/",
+    "linkedin_url": "https://www.linkedin.com/company/humansand/",
+    "news_feed_url": "https://www.humansand.com/journal"
+  }
+]

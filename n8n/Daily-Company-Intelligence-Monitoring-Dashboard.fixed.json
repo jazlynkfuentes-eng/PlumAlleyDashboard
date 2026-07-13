@@ -1,0 +1,241 @@
+{
+  "name": "Daily Company Intelligence Monitoring Dashboard (Fixed)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 200]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 6 * * *" }]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule 6am Daily",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Loads portfolio companies with a LinkedIn page.\n * Source of truth: paste from Projects/portfolio-intel/data/company-seed.json\n * or keep this Code node in sync after seed changes.\n */\nconst fsCompanies = [\n  // Placeholder — replace by reading from static data below\n];\n\n// Embedded seed (linkedin_url required). Null LinkedIn companies are skipped.\nconst seed = $getWorkflowStaticData('global').companySeed\n  || JSON.parse($('Seed Companies').first().json.seedJson || '[]');\n\nconst companies = seed.filter(c => c.linkedin_url);\n\nreturn companies.map(c => ({\n  json: {\n    slug: c.slug,\n    company_name: c.name,\n    linkedin_url: String(c.linkedin_url).replace(/\\/+$/, ''),\n    website_url: c.website_url,\n    run_id: $execution.id,\n  }\n}));"
+      },
+      "id": "load-companies",
+      "name": "Load Companies With LinkedIn",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const seed = [\n{\"slug\":\"aclima\",\"name\":\"Aclima\",\"linkedin_url\":\"https://www.linkedin.com/company/aclima\",\"website_url\":\"https://www.aclima.io/\"},\n{\"slug\":\"aifi\",\"name\":\"AiFi\",\"linkedin_url\":\"https://www.linkedin.com/company/aifi-inc\",\"website_url\":\"https://aifi.com/\"},\n{\"slug\":\"air-protein\",\"name\":\"Air Protein\",\"linkedin_url\":\"https://www.linkedin.com/company/air-protein\",\"website_url\":\"https://www.airprotein.com/\"},\n{\"slug\":\"arix-technologies\",\"name\":\"ARIX Technologies\",\"linkedin_url\":\"https://www.linkedin.com/company/arix-technologies\",\"website_url\":\"https://arixtechnologies.com/\"},\n{\"slug\":\"ashvattha-therapeutics\",\"name\":\"Ashvattha Therapeutics\",\"linkedin_url\":\"https://www.linkedin.com/company/ashvattha-therapeutics\",\"website_url\":\"https://avttx.com/\"},\n{\"slug\":\"betteromics\",\"name\":\"BetterOmics\",\"linkedin_url\":\"https://www.linkedin.com/company/betteromics\",\"website_url\":\"https://www.betteromics.com/\"},\n{\"slug\":\"biobot-analytics\",\"name\":\"Biobot Analytics\",\"linkedin_url\":\"https://www.linkedin.com/company/biobot-analytics\",\"website_url\":\"https://biobot.io/\"},\n{\"slug\":\"bioeclipse\",\"name\":\"BioEclipse\",\"linkedin_url\":\"https://www.linkedin.com/company/bioeclipse-therapeutics\",\"website_url\":\"https://www.bioeclipse.com/\"},\n{\"slug\":\"cordex\",\"name\":\"Cordex\",\"linkedin_url\":\"https://www.linkedin.com/company/wcrp-cordex\",\"website_url\":\"https://cordex.org/\"},\n{\"slug\":\"diligent-robotics\",\"name\":\"Diligent Robotics\",\"linkedin_url\":\"https://www.linkedin.com/company/diligent-robotics\",\"website_url\":\"https://www.diligentrobots.com/\"},\n{\"slug\":\"einride\",\"name\":\"Einride\",\"linkedin_url\":\"https://www.linkedin.com/company/einride\",\"website_url\":\"https://www.einride.tech/\"},\n{\"slug\":\"epibone\",\"name\":\"EpiBone\",\"linkedin_url\":\"https://www.linkedin.com/company/epibone\",\"website_url\":\"https://www.epibone.com/\"},\n{\"slug\":\"evrnu\",\"name\":\"Evrnu\",\"linkedin_url\":\"https://www.linkedin.com/company/evrnu\",\"website_url\":\"https://www.evrnu.com/\"},\n{\"slug\":\"fidocure\",\"name\":\"FidoCure (One Health)\",\"linkedin_url\":\"https://www.linkedin.com/company/one-health-company\",\"website_url\":\"https://www.fidocure.com/\"},\n{\"slug\":\"gameto\",\"name\":\"Gameto\",\"linkedin_url\":\"https://www.linkedin.com/company/gameto\",\"website_url\":\"https://www.gametogen.com/\"},\n{\"slug\":\"grey-rhino\",\"name\":\"Grey Rhino (One Concern)\",\"linkedin_url\":\"https://www.linkedin.com/company/oneconcern\",\"website_url\":\"https://www.oneconcern.com/\"},\n{\"slug\":\"helaina\",\"name\":\"Helaina\",\"linkedin_url\":\"https://www.linkedin.com/company/helaina\",\"website_url\":\"https://www.helaina.com/\"},\n{\"slug\":\"humans-and\",\"name\":\"humans&\",\"linkedin_url\":\"https://www.linkedin.com/company/humansand\",\"website_url\":\"https://www.humansand.com/\"},\n{\"slug\":\"innerplant\",\"name\":\"InnerPlant\",\"linkedin_url\":\"https://www.linkedin.com/company/innerplant\",\"website_url\":\"https://innerplant.com/\"},\n{\"slug\":\"juvena-therapeutics\",\"name\":\"Juvena Therapeutics\",\"linkedin_url\":\"https://www.linkedin.com/company/juvena-therapeutics\",\"website_url\":\"https://www.juvenatherapeutics.com/\"},\n{\"slug\":\"ketos\",\"name\":\"KETOS\",\"linkedin_url\":\"https://www.linkedin.com/company/ketos\",\"website_url\":\"https://www.ketos.co/\"},\n{\"slug\":\"kraus-hamdani-aerospace\",\"name\":\"Kraus Hamdani Aerospace\",\"linkedin_url\":\"https://www.linkedin.com/company/kraus-hamdani-aerospace\",\"website_url\":\"https://www.kraushamdaniaero.com/\"},\n{\"slug\":\"mai\",\"name\":\"MAI (formerly Markable)\",\"linkedin_url\":\"https://www.linkedin.com/company/mai-agents\",\"website_url\":\"https://www.mai.com/\"},\n{\"slug\":\"mammoth-biosciences\",\"name\":\"Mammoth Biosciences\",\"linkedin_url\":\"https://www.linkedin.com/company/mammoth-biosciences\",\"website_url\":\"https://mammoth.bio/\"},\n{\"slug\":\"node\",\"name\":\"Node\",\"linkedin_url\":\"https://www.linkedin.com/company/node\",\"website_url\":\"https://www.node.com/\"},\n{\"slug\":\"openwater\",\"name\":\"Openwater\",\"linkedin_url\":\"https://www.linkedin.com/company/openwaterhealth\",\"website_url\":\"https://www.openwater.health/\"},\n{\"slug\":\"phoenix-tailings\",\"name\":\"Phoenix Tailings\",\"linkedin_url\":\"https://www.linkedin.com/company/phoenix-tailings\",\"website_url\":\"https://www.phoenixtailings.com/\"},\n{\"slug\":\"siren-biotechnology\",\"name\":\"Siren Biotechnology\",\"linkedin_url\":\"https://www.linkedin.com/company/siren-biotechnology\",\"website_url\":\"https://www.sirenbiotechnology.com/\"},\n{\"slug\":\"thinkcerca\",\"name\":\"ThinkCERCA\",\"linkedin_url\":\"https://www.linkedin.com/company/thinkcerca\",\"website_url\":\"https://www.thinkcerca.com/\"},\n{\"slug\":\"tinkergarten\",\"name\":\"Tinkergarten\",\"linkedin_url\":\"https://www.linkedin.com/company/tinkergarten\",\"website_url\":\"https://www.tinkergarten.com/\"},\n{\"slug\":\"vyv\",\"name\":\"Vyv (formerly Vital Vio)\",\"linkedin_url\":\"https://www.linkedin.com/company/vyv\",\"website_url\":\"https://www.vyv.tech/\"}\n];\nreturn [{ json: { seedJson: JSON.stringify(seed), count: seed.length } }];"
+      },
+      "id": "seed-companies",
+      "name": "Seed Companies",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [280, 100]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "split-batches",
+      "name": "One Company At A Time",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [760, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Respect Apify concurrency — pause between companies\nawait new Promise(r => setTimeout(r, 4000));\nreturn [$input.first()];"
+      },
+      "id": "throttle-wait",
+      "name": "Throttle 4s",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/harvestapi~linkedin-company-posts/run-sync-get-dataset-items",
+        "sendQuery": true,
+        "specifyQuery": "keypair",
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $credentials.apifyApi.apiToken || $env.APIFY_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"targetUrls\": [\"{{ $json.linkedin_url }}\"],\n  \"maxPosts\": 10,\n  \"includeReposts\": false,\n  \"scrapeReactions\": false,\n  \"scrapeComments\": false\n}",
+        "options": {
+          "timeout": 180000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "apify-company-posts",
+      "name": "Apify Company Page Posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1200, 100],
+      "notesInFlow": true,
+      "notes": "FIXED actor: harvestapi/linkedin-company-posts with targetUrls (company page URL). NOT linkedin-post-search. Put Apify token in n8n credential/env — never hardcode."
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalize(url) {\n  if (!url) return '';\n  try {\n    const u = new URL(String(url).trim());\n    u.hash = '';\n    u.search = '';\n    let path = u.pathname.replace(/\\/+$/, '').toLowerCase();\n    path = path.replace(/\\/(about|posts|jobs|people|insights)$/i, '');\n    return 'https://www.linkedin.com' + path;\n  } catch {\n    return String(url).trim().replace(/\\/+$/, '').toLowerCase();\n  }\n}\n\nfunction authorMatches(authorUrl, companyUrl) {\n  const a = normalize(authorUrl);\n  const c = normalize(companyUrl);\n  if (!a || !c) return false;\n  if (a === c) return true;\n  const cs = c.match(/\\/company\\/([^/]+)/)?.[1];\n  const as = a.match(/\\/company\\/([^/]+)/)?.[1];\n  return !!(cs && as && cs === as);\n}\n\nconst company = $('Throttle 4s').item.json;\nconst companyUrl = company.linkedin_url;\nconst apifyRaw = $input.all();\n\n// Apify sync endpoint returns an array of posts, or an error object\nlet posts = [];\nlet apifyError = null;\nconst first = apifyRaw[0]?.json;\nif (Array.isArray(first)) {\n  posts = first;\n} else if (Array.isArray($input.first().json)) {\n  posts = $input.first().json;\n} else if (first?.error || first?.errorMessage) {\n  apifyError = first.errorMessage || first.error || JSON.stringify(first);\n} else if (first && (first.content || first.linkedinUrl || first.type === 'post')) {\n  posts = apifyRaw.map(i => i.json);\n} else if (Array.isArray(first?.data?.items)) {\n  posts = first.data.items;\n} else {\n  // sometimes each item is a post already\n  posts = apifyRaw.map(i => i.json).filter(p => p && (p.content || p.linkedinUrl));\n}\n\nconst kept = [];\nconst filtered = [];\n\nfor (const p of posts) {\n  if (!p || typeof p !== 'object') continue;\n  const authorUrl = p.author?.linkedinUrl || p.author?.url || '';\n  const authorType = (p.author?.type || '').toLowerCase();\n  const postUrl = p.linkedinUrl || p.url || p.postUrl || '';\n  const content = (p.content || p.text || p.postText || '').trim();\n  const published =\n    p.postedAt?.date ||\n    (p.postedAt?.timestamp ? new Date(p.postedAt.timestamp).toISOString() : null) ||\n    p.publishedAt ||\n    null;\n\n  if (!content || !postUrl) {\n    filtered.push({ reason: 'missing_fields', post_url: postUrl });\n    continue;\n  }\n\n  // Prefer explicit company author match; also accept missing authorUrl only if author.type === company\n  const ok =\n    (authorUrl && authorMatches(authorUrl, companyUrl)) ||\n    (!authorUrl && authorType === 'company');\n\n  if (!ok) {\n    filtered.push({\n      reason: 'author_mismatch',\n      post_url: postUrl,\n      author_url: authorUrl,\n      author_type: authorType,\n    });\n    continue;\n  }\n\n  kept.push({\n    company_name: company.company_name,\n    company_slug: company.slug,\n    linkedin_url: companyUrl,\n    post_content: content,\n    post_url: postUrl,\n    published_at: published,\n    author_url: authorUrl,\n  });\n}\n\nreturn [{\n  json: {\n    company_name: company.company_name,\n    company_slug: company.slug,\n    linkedin_url: companyUrl,\n    success: !apifyError,\n    apify_error: apifyError,\n    posts_raw: posts.length,\n    posts_kept: kept.length,\n    posts_filtered: filtered.length,\n    filtered,\n    posts: kept,\n  }\n}];"
+      },
+      "id": "validate-posts",
+      "name": "Validate Author = Company Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 100],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const summary = $input.first().json;\nconst posts = summary.posts || [];\nif (!posts.length) {\n  return [{ json: { ...summary, ingest_skipped: true, ingest_ok: 0, ingest_failed: 0 } }];\n}\n\n// Emit one item per post for HTTP node (with company context)\nreturn posts.map(p => ({ json: { ...p, _meta: { company_slug: summary.company_slug, company_name: summary.company_name } } }));"
+      },
+      "id": "split-posts",
+      "name": "Split Valid Posts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1660, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DASHBOARD_URL || 'http://localhost:3000' }}/api/updates/linkedin",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.INGEST_SECRET || $env.CRON_SECRET }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"company_name\": {{ JSON.stringify($json.company_name) }},\n  \"company_slug\": {{ JSON.stringify($json.company_slug) }},\n  \"linkedin_url\": {{ JSON.stringify($json.linkedin_url) }},\n  \"post_content\": {{ JSON.stringify($json.post_content) }},\n  \"post_url\": {{ JSON.stringify($json.post_url) }},\n  \"published_at\": {{ JSON.stringify($json.published_at) }},\n  \"author_url\": {{ JSON.stringify($json.author_url) }},\n  \"raw_source\": {{ JSON.stringify($json.raw_source) }}\n}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 500
+            }
+          },
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "retry": {
+            "maxTries": 3,
+            "retryOnFail": true,
+            "waitBetweenTries": 2000
+          }
+        }
+      },
+      "id": "post-dashboard",
+      "name": "POST Dashboard LinkedIn Ingest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1880, 100],
+      "onError": "continueRegularOutput",
+      "notesInFlow": true,
+      "notes": "Set DASHBOARD_URL (e.g. http://localhost:3000 or your deploy URL) and INGEST_SECRET in n8n env. Retries 3x with backoff."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate per-company outcome after post loop returns to batch\nconst company = $('Validate Author = Company Page').first().json;\nconst ingestResults = $input.all().map(i => i.json);\n\nlet ingest_ok = 0;\nlet ingest_failed = 0;\nfor (const r of ingestResults) {\n  if (r.ok || r.inserted || r.updated || r.total != null) ingest_ok += 1;\n  else if (r.error || r.message) ingest_failed += 1;\n}\n\nconst line = {\n  company_name: company.company_name,\n  company_slug: company.company_slug,\n  success: company.success,\n  apify_error: company.apify_error || null,\n  posts_raw: company.posts_raw,\n  posts_kept: company.posts_kept,\n  posts_filtered: company.posts_filtered,\n  filtered_sample: (company.filtered || []).slice(0, 3),\n  ingest_ok,\n  ingest_failed,\n};\n\nreturn [{ json: line }];"
+      },
+      "id": "company-log",
+      "name": "Per-Company Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2100, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json);\nconst summary = {\n  companies: rows.length,\n  succeeded: rows.filter(r => r.success && !r.apify_error).length,\n  failed: rows.filter(r => r.apify_error || r.success === false).length,\n  posts_kept_total: rows.reduce((s, r) => s + (r.posts_kept || 0), 0),\n  posts_filtered_total: rows.reduce((s, r) => s + (r.posts_filtered || 0), 0),\n  ingest_ok_total: rows.reduce((s, r) => s + (r.ingest_ok || 0), 0),\n  ingest_failed_total: rows.reduce((s, r) => s + (r.ingest_failed || 0), 0),\n  per_company: rows,\n  finished_at: new Date().toISOString(),\n};\nconsole.log(JSON.stringify(summary, null, 2));\nreturn [{ json: summary }];"
+      },
+      "id": "final-summary",
+      "name": "Final Run Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 320]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [[{ "node": "Seed Companies", "type": "main", "index": 0 }]]
+    },
+    "Schedule 6am Daily": {
+      "main": [[{ "node": "Seed Companies", "type": "main", "index": 0 }]]
+    },
+    "Seed Companies": {
+      "main": [[{ "node": "Load Companies With LinkedIn", "type": "main", "index": 0 }]]
+    },
+    "Load Companies With LinkedIn": {
+      "main": [[{ "node": "One Company At A Time", "type": "main", "index": 0 }]]
+    },
+    "One Company At A Time": {
+      "main": [
+        [{ "node": "Final Run Summary", "type": "main", "index": 0 }],
+        [{ "node": "Throttle 4s", "type": "main", "index": 0 }]
+      ]
+    },
+    "Throttle 4s": {
+      "main": [[{ "node": "Apify Company Page Posts", "type": "main", "index": 0 }]]
+    },
+    "Apify Company Page Posts": {
+      "main": [[{ "node": "Validate Author = Company Page", "type": "main", "index": 0 }]]
+    },
+    "Validate Author = Company Page": {
+      "main": [[{ "node": "Split Valid Posts", "type": "main", "index": 0 }]]
+    },
+    "Split Valid Posts": {
+      "main": [[{ "node": "POST Dashboard LinkedIn Ingest", "type": "main", "index": 0 }]]
+    },
+    "POST Dashboard LinkedIn Ingest": {
+      "main": [[{ "node": "Per-Company Log", "type": "main", "index": 0 }]]
+    },
+    "Per-Company Log": {
+      "main": [[{ "node": "One Company At A Time", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {},
+  "tags": [
+    {
+      "name": "portfolio-intel"
+    }
+  ]
+}
