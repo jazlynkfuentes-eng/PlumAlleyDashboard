@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+
 import { ingestUpdateRow } from "@/lib/ingest-shared";
 import { coercePublishedAt } from "@/lib/utils";
 
@@ -212,8 +212,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user && !authorized(req)) {
+
+  if (!authorized(req)) {
     return NextResponse.json(
       {
         success: false,
