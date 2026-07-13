@@ -12,7 +12,7 @@ import { FeedFilters } from "@/components/feed-filters";
 import { RefreshButton } from "@/components/refresh-button";
 import { DailyAutoRefresh } from "@/components/daily-auto-refresh";
 import Link from "next/link";
-
+import AccessGate from '@/components/AccessGate';
 export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{
@@ -88,6 +88,12 @@ export default async function DashboardPage({
     orderBy: { startedAt: "desc" },
   });
 
+  const { cookies } = require('next/headers');
+  const cookieStore = cookies();
+  const accessGranted = cookieStore.get('access_granted');
+  if (!accessGranted) {
+    return <AccessGate />;
+  }
   return (
     <div className="px-8 py-8">
       <DailyAutoRefresh />
