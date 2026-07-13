@@ -9,7 +9,7 @@ Private dashboard for LinkedIn company-page posts. **n8n scrapes; this app store
 3. Run:
 
 ```powershell
-.\setup.ps1
+./setup.ps1
 ```
 
 4. Edit `.env` — set **`INGEST_SECRET`** to a long random string
@@ -56,3 +56,5 @@ npm start
 Use PostgreSQL in production: set `DATABASE_URL` to a Postgres connection string before `prisma db push`.
 
 **AWS Amplify:** see **`DEPLOY-AMPLIFY.md`** — fixes the common 404 (must use Web Compute + Postgres).
+
+
