@@ -58,3 +58,4 @@ Use PostgreSQL in production: set `DATABASE_URL` to a Postgres connection string
 **AWS Amplify:** see **`DEPLOY-AMPLIFY.md`** — fixes the common 404 (must use Web Compute + Postgres).
 
 
+<!-- Build trigger -->
