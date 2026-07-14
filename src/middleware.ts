@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
-export function middleware(request) {
+export function middleware(request: NextRequest) {
   // No authentication – simply continue to the requested route
   return NextResponse.next();
 }
