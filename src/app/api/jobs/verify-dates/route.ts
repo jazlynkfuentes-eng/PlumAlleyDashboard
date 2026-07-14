@@ -5,7 +5,6 @@ import { getSystemClock } from "@/lib/utils";
 
 /** Lightweight clock snapshot for the UI / agents. */
 export async function GET() {
-
   return NextResponse.json({ clock: getSystemClock() });
 }
 
@@ -15,14 +14,10 @@ export async function GET() {
  * Uses this machine's OS clock and re-checks source URLs when possible.
  */
 export async function POST(req: Request) {
-  // No session check needed; proceed directly
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const body = await req.json().catch(() => ({}));
   try {
     const result = await verifyUpdateDates({
-      autoFix: body.autoFix === true,
+      autoFix: body.autoForce === true,
       limit: typeof body.limit === "number" ? body.limit : 40,
       companySlug:
         typeof body.companySlug === "string" ? body.companySlug : undefined,
