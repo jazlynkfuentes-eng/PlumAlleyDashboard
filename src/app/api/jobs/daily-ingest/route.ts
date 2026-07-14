@@ -11,16 +11,15 @@ function authorized(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
   const isCron = authorized(req);
-  if (!session?.user && !isCron) {
+  if (!isCron) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await req.json().catch(() => ({}));
   const companySlug =
     typeof body.companySlug === "string" ? body.companySlug : undefined;
-  const force = body.force === true || !!session?.user;
+  const force = body.force === true;
 
   try {
     const result = await runDailyIngest({ companySlug, force });

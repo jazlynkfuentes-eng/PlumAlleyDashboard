@@ -15,8 +15,7 @@ export async function GET() {
  * Uses this machine's OS clock and re-checks source URLs when possible.
  */
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user) {
+  // No session check needed; proceed directly
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
