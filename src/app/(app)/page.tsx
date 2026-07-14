@@ -33,24 +33,32 @@ export default async function DashboardPage({
   const dateLabel = formatLongDay(selectedDate);
   const isToday = toDateInputValue(selectedDate) === toDateInputValue();
 
-  const companies = await prisma.company.findMany({
+let companies: any[] = [];
+let updates: any[] = [];
+let summaries: any[] = [];
+let lastRun: any = null;
+let companyFilter: any = null;
+let keyword: string | undefined = undefined;
+
+try {
+  companies = await prisma.company.findMany({
     where: { linkedinUrl: { not: null } },
     orderBy: { name: "asc" },
     select: { id: true, slug: true, name: true },
   });
 
-  const companyFilter = sp.company
+  companyFilter = sp.company
     ? companies.find((c) => c.slug === sp.company)
     : null;
 
-  const keyword = sp.q?.trim();
+  keyword = sp.q?.trim();
 
   // Default feed: show recent activity (last 14 days) when viewing "today"
   // so the timeline isn't empty before ingest — date filter still narrows to one day when set.
   const feedFrom = sp.date ? from : startOfLocalDay(new Date(Date.now() - 13 * 24 * 60 * 60 * 1000));
   const feedTo = to;
 
-  const updates = await prisma.update.findMany({
+  updates = await prisma.update.findMany({
     where: {
       sourceType: "linkedin",
       rawSource: { not: null },
@@ -74,7 +82,7 @@ export default async function DashboardPage({
     take: 100,
   });
 
-  const summaries = await prisma.dailySummary.findMany({
+  summaries = await prisma.dailySummary.findMany({
     where: {
       summaryDate: from,
       ...(companyFilter ? { companyId: companyFilter.id } : {}),
@@ -84,9 +92,13 @@ export default async function DashboardPage({
     orderBy: { company: { name: "asc" } },
   });
 
-  const lastRun = await prisma.ingestRun.findFirst({
+  lastRun = await prisma.ingestRun.findFirst({
     orderBy: { startedAt: "desc" },
   });
+} catch (e) {
+  console.error("Homepage DB error:", e);
+  // placeholders remain empty
+}
 
   const { cookies } = require('next/headers');
   const cookieStore = cookies();
