@@ -13,6 +13,9 @@ frontend:
         - npx prisma generate
     build:
       commands:
+        # Amplify console env vars are build-time only; write into .env.production
+        # so Next.js SSR / API routes can read them at runtime (Web Compute).
+        - env | grep -e ACCESS_CODE -e DATABASE_URL -e INGEST_SECRET >> .env.production
         - |
           if [ -n "$DATABASE_URL" ]; then
             for i in 1 2 3; do
