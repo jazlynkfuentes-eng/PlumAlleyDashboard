@@ -17,7 +17,11 @@ export default function RootLayout({
     <html lang="en" className="h-full">
       <head>
         <link
-          href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap"
+          href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700,900&display=swap"
+          rel="stylesheet"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap"
           rel="stylesheet"
         />
       </head>

@@ -23,6 +23,9 @@ model Company {
   name                 String
   sector               String
   description          String         @default("")
+  tags                 String[]       @default([])
+  logoColor            String?
+  aliases              String[]       @default([])
   websiteUrl           String?
   linkedinUrl          String?
   newsFeedUrl          String?

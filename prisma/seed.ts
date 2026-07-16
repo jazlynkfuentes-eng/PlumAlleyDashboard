@@ -5,28 +5,51 @@ import path from "path";
 
 const prisma = new PrismaClient();
 
+function withTrailingSlash(url: string | null | undefined): string | null {
+  if (!url || url === "N/A") return null;
+  return url.endsWith("/") ? url : `${url}/`;
+}
+
 async function main() {
-  const seedPath = path.join(__dirname, "..", "company-seed.json");
+  // Canonical enriched seed (slug, sector, description, tags, logo_color, aliases)
+  const seedPath = path.join(__dirname, "..", "data", "company-seed.json");
   const raw = fs.readFileSync(seedPath, "utf-8");
-  const companies = JSON.parse(raw);
+  const companies = JSON.parse(raw) as Array<{
+    slug: string;
+    name: string;
+    sector?: string;
+    website_url?: string | null;
+    linkedin_url?: string | null;
+    news_feed_url?: string | null;
+    description?: string;
+    tags?: string[];
+    logo_color?: string | null;
+    aliases?: string[];
+  }>;
 
-  // Helper to generate slug
-  const slugify = (str: string) =>
-    str.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  let upserted = 0;
+  for (const c of companies) {
+    const data = {
+      name: c.name,
+      sector: c.sector ?? "",
+      description: c.description ?? "",
+      tags: Array.isArray(c.tags) ? c.tags : [],
+      logoColor: c.logo_color ?? null,
+      aliases: Array.isArray(c.aliases) ? c.aliases : [],
+      websiteUrl: withTrailingSlash(c.website_url),
+      linkedinUrl: c.linkedin_url ?? null,
+      newsFeedUrl: c.news_feed_url ?? null,
+    };
 
-  const data = companies.map((c: any) => ({
-    name: c.name,
-    slug: slugify(c.name),
-    sector: c.sector ?? "",
-    websiteUrl: c.website_url ?? null,
-    linkedinUrl: c.linkedin_url ?? null,
-  }));
+    await prisma.company.upsert({
+      where: { slug: c.slug },
+      create: { slug: c.slug, ...data },
+      update: data,
+    });
+    upserted += 1;
+  }
 
-  const result = await prisma.company.createMany({
-    data,
-    skipDuplicates: true,
-  });
-  console.log(`✅ Seeded ${result.count} companies`);
+  console.log(`✅ Upserted ${upserted} companies from data/company-seed.json`);
 }
 
 main()

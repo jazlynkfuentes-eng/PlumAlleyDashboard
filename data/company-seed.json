@@ -5,7 +5,16 @@
     "sector": "Robotics / Industrial",
     "website_url": "https://www.arix-tech.com/",
     "linkedin_url": "https://www.linkedin.com/company/arix-technologies/",
-    "news_feed_url": "https://arixtechnologies.com/news/"
+    "news_feed_url": "https://arixtechnologies.com/news/",
+    "description": "ARIX Technologies develops robotic inspection systems and software for automated corrosion detection in industrial plants.",
+    "tags": [
+      "Robotics",
+      "Hardware",
+      "Industrial",
+      "B2B"
+    ],
+    "logo_color": "#F59E0B",
+    "aliases": []
   },
   {
     "slug": "aclima",
@@ -13,7 +22,16 @@
     "sector": "Climate / Air Quality",
     "website_url": "https://aclima.earth/",
     "linkedin_url": "https://www.linkedin.com/company/aclima-inc-/",
-    "news_feed_url": "https://www.aclima.io/blog"
+    "news_feed_url": "https://www.aclima.io/blog",
+    "description": "Aclima delivers hyper-local air quality and greenhouse gas data to protect public health and reduce emissions.",
+    "tags": [
+      "Climate Tech",
+      "SaaS",
+      "Hardware",
+      "ESG"
+    ],
+    "logo_color": "#10B981",
+    "aliases": []
   },
   {
     "slug": "aifi",
@@ -21,7 +39,16 @@
     "sector": "Retail Tech / AI",
     "website_url": "https://www.aifi.com/",
     "linkedin_url": "https://www.linkedin.com/company/aifi-inc/",
-    "news_feed_url": "https://aifi.com/news/"
+    "news_feed_url": "https://aifi.com/news/",
+    "description": "AiFi enables auto-checkout and retail automation using computer vision and artificial intelligence.",
+    "tags": [
+      "AI",
+      "Retail Tech",
+      "Computer Vision",
+      "B2B"
+    ],
+    "logo_color": "#3B82F6",
+    "aliases": []
   },
   {
     "slug": "air-protein",
@@ -29,7 +56,16 @@
     "sector": "Food Tech",
     "website_url": "https://www.airprotein.com/",
     "linkedin_url": "https://www.linkedin.com/company/air-protein/",
-    "news_feed_url": "https://www.airprotein.com/news"
+    "news_feed_url": "https://www.airprotein.com/news",
+    "description": "Air Protein makes meat alternatives from elements found in the air using carbon transformation technology.",
+    "tags": [
+      "FoodTech",
+      "AgTech",
+      "Sustainability",
+      "Biotech"
+    ],
+    "logo_color": "#84CC16",
+    "aliases": []
   },
   {
     "slug": "apellai",
@@ -37,7 +73,15 @@
     "sector": "Health Tech",
     "website_url": "https://apellai.com/",
     "linkedin_url": null,
-    "news_feed_url": "https://www.apellai.com/"
+    "news_feed_url": "https://www.apellai.com/",
+    "description": "Apellai is a biotechnology platform developing precision therapeutics to target protein folding and cellular stress.",
+    "tags": [
+      "Biotech",
+      "Therapeutics",
+      "R&D"
+    ],
+    "logo_color": "#EC4899",
+    "aliases": []
   },
   {
     "slug": "ashvattha-therapeutics",
@@ -45,15 +89,33 @@
     "sector": "Biotech",
     "website_url": "https://avttx.com/",
     "linkedin_url": "https://www.linkedin.com/company/ashvattha-therapeutics-inc/",
-    "news_feed_url": "https://avttx.com/news/"
+    "news_feed_url": "https://avttx.com/news/",
+    "description": "Ashvattha Therapeutics develops novel targeted therapeutics using hydroxyl dendrimers to treat inflammatory diseases.",
+    "tags": [
+      "Biotech",
+      "Therapeutics",
+      "Clinical Stage",
+      "Healthcare"
+    ],
+    "logo_color": "#8B5CF6",
+    "aliases": []
   },
   {
     "slug": "betteromics",
     "name": "BetterOmics",
     "sector": "Bioinformatics",
-    "website_url": "N/A",
+    "website_url": null,
     "linkedin_url": "https://www.linkedin.com/company/betteromics/",
-    "news_feed_url": "https://www.betteromics.com/blog"
+    "news_feed_url": "https://www.betteromics.com/blog",
+    "description": "BetterOmics provides an enterprise SaaS platform for biological data processing, storage, and machine learning infrastructure.",
+    "tags": [
+      "SaaS",
+      "Bioinformatics",
+      "Data",
+      "AI"
+    ],
+    "logo_color": "#6366F1",
+    "aliases": []
   },
   {
     "slug": "bioeclipse",
@@ -61,7 +123,16 @@
     "sector": "Biotech / Immuno-oncology",
     "website_url": "https://www.bioeclipse.com/",
     "linkedin_url": "https://www.linkedin.com/company/bioeclipse-therapeutics-inc/",
-    "news_feed_url": "https://www.bioeclipse.com/news/"
+    "news_feed_url": "https://www.bioeclipse.com/news/",
+    "description": "BioEclipse Therapeutics is a clinical-stage oncology company developing multi-mechanism immunotherapies to target solid tumors.",
+    "tags": [
+      "Oncology",
+      "Immunotherapy",
+      "Biotech",
+      "Clinical Stage"
+    ],
+    "logo_color": "#F43F5E",
+    "aliases": []
   },
   {
     "slug": "biobot-analytics",
@@ -69,7 +140,16 @@
     "sector": "Public Health",
     "website_url": "https://biobot.io/",
     "linkedin_url": "https://www.linkedin.com/company/biobot-analytics/",
-    "news_feed_url": "https://biobot.io/blog/"
+    "news_feed_url": "https://biobot.io/blog/",
+    "description": "Biobot Analytics monitors public health threats and infectious diseases through wastewater intelligence and analysis.",
+    "tags": [
+      "Epidemiology",
+      "Data Science",
+      "Public Health",
+      "SaaS"
+    ],
+    "logo_color": "#06B6D4",
+    "aliases": []
   },
   {
     "slug": "cordex",
@@ -77,7 +157,16 @@
     "sector": "Climate Science",
     "website_url": "https://cordex.org/",
     "linkedin_url": "https://www.linkedin.com/company/wcrp-cordex/",
-    "news_feed_url": "https://cordex.org/news/"
+    "news_feed_url": "https://cordex.org/news/",
+    "description": "CORDEX is a global climate science program that coordinates regional climate downscaling research to support adaptation planning.",
+    "tags": [
+      "Diagnostics",
+      "Medical Device",
+      "Hardware",
+      "Healthcare"
+    ],
+    "logo_color": "#EF4444",
+    "aliases": []
   },
   {
     "slug": "diligent-robotics",
@@ -85,7 +174,16 @@
     "sector": "Healthcare Robotics",
     "website_url": "https://www.diligentrobots.com/",
     "linkedin_url": "https://www.linkedin.com/company/diligent-robotics/",
-    "news_feed_url": "https://www.diligentrobots.com/news"
+    "news_feed_url": "https://www.diligentrobots.com/news",
+    "description": "Diligent Robotics builds Moxi, an autonomous social robot designed to assist clinical staff with hospital tasks.",
+    "tags": [
+      "Robotics",
+      "Healthcare",
+      "Hardware",
+      "AI"
+    ],
+    "logo_color": "#14B8A6",
+    "aliases": []
   },
   {
     "slug": "einride",
@@ -93,7 +191,17 @@
     "sector": "Mobility / Logistics",
     "website_url": "https://www.einride.tech/",
     "linkedin_url": "https://www.linkedin.com/company/einride/",
-    "news_feed_url": "https://www.einride.tech/news"
+    "news_feed_url": "https://www.einride.tech/news",
+    "description": "Einride designs and operates autonomous, electric freight transport systems to reduce transport emissions.",
+    "tags": [
+      "Autonomous",
+      "EV",
+      "Freight",
+      "Logistics",
+      "Climate Tech"
+    ],
+    "logo_color": "#111827",
+    "aliases": []
   },
   {
     "slug": "epibone",
@@ -101,15 +209,33 @@
     "sector": "Biotech / Regenerative",
     "website_url": "https://www.epibone.com/",
     "linkedin_url": "https://www.linkedin.com/company/epibone/",
-    "news_feed_url": "https://www.epibone.com/news"
+    "news_feed_url": "https://www.epibone.com/news",
+    "description": "EpiBone grows living bone and cartilage grafts from a patient's own stem cells for reconstructive therapies.",
+    "tags": [
+      "Biotech",
+      "Regenerative Medicine",
+      "Stem Cells",
+      "Healthcare"
+    ],
+    "logo_color": "#22C55E",
+    "aliases": []
   },
   {
     "slug": "evrnu",
     "name": "Evrnu",
     "sector": "Materials / Circularity",
-    "website_url": "https://www.evrnu.com/nucycl",
+    "website_url": "https://www.evrnu.com/nucycl/",
     "linkedin_url": "https://www.linkedin.com/company/evrnu/",
-    "news_feed_url": "https://www.evrnu.com/news"
+    "news_feed_url": "https://www.evrnu.com/news",
+    "description": "Evrnu transforms garment waste into high-performance recyclable fibers to enable a circular textile economy.",
+    "tags": [
+      "Climate Tech",
+      "Materials Science",
+      "Circular Economy",
+      "Textiles"
+    ],
+    "logo_color": "#4ADE80",
+    "aliases": []
   },
   {
     "slug": "fidocure",
@@ -117,7 +243,16 @@
     "sector": "Veterinary Oncology",
     "website_url": "https://fidocure.com/",
     "linkedin_url": "https://www.linkedin.com/company/onehealthco/",
-    "news_feed_url": "https://www.fidocure.com/news"
+    "news_feed_url": "https://www.fidocure.com/news",
+    "description": "FidoCure delivers personalized precision medicine treatments to dogs fighting canine cancer.",
+    "tags": [
+      "Biotech",
+      "Veterinary Medicine",
+      "Oncology",
+      "Genomics"
+    ],
+    "logo_color": "#F59E0B",
+    "aliases": []
   },
   {
     "slug": "gameto",
@@ -125,7 +260,16 @@
     "sector": "Women's Health / Biotech",
     "website_url": "https://www.gametogen.com/",
     "linkedin_url": "https://www.linkedin.com/company/gameto-inc/",
-    "news_feed_url": "https://www.gametogen.com/news"
+    "news_feed_url": "https://www.gametogen.com/news",
+    "description": "Gameto develops cellular therapeutics to improve ovarian health and redefine IVF treatments.",
+    "tags": [
+      "Women Health",
+      "Biotech",
+      "Therapeutics",
+      "IVF"
+    ],
+    "logo_color": "#F472B6",
+    "aliases": []
   },
   {
     "slug": "grey-rhino",
@@ -133,7 +277,16 @@
     "sector": "Climate Risk / Software",
     "website_url": "https://oneconcern.com/en/",
     "linkedin_url": "https://www.linkedin.com/company/oneconcern/",
-    "news_feed_url": "https://www.oneconcern.com/news"
+    "news_feed_url": "https://www.oneconcern.com/news",
+    "description": "Grey Rhino offers climate risk intelligence and resilience software to predict and manage environmental threats.",
+    "tags": [
+      "Climate Risk",
+      "SaaS",
+      "AI",
+      "Disaster Resilience"
+    ],
+    "logo_color": "#4B5563",
+    "aliases": []
   },
   {
     "slug": "helaina",
@@ -141,7 +294,16 @@
     "sector": "Food Tech / Biotech",
     "website_url": "https://www.myhelaina.com/",
     "linkedin_url": "https://www.linkedin.com/company/helaina/",
-    "news_feed_url": "https://www.helaina.com/news"
+    "news_feed_url": "https://www.helaina.com/news",
+    "description": "Helaina uses precision fermentation to produce bioactive proteins mimicking human breast milk components for advanced nutrition.",
+    "tags": [
+      "Food Science",
+      "Fermentation",
+      "Biotech",
+      "Nutrition"
+    ],
+    "logo_color": "#D946EF",
+    "aliases": []
   },
   {
     "slug": "innerplant",
@@ -149,7 +311,16 @@
     "sector": "AgTech",
     "website_url": "https://innerplant.com/",
     "linkedin_url": "https://www.linkedin.com/company/innerplant/",
-    "news_feed_url": "https://innerplant.com/news/"
+    "news_feed_url": "https://innerplant.com/news/",
+    "description": "InnerPlant genetically engineers crops to emit optical signals when under stress, warning farmers of pest or water issues.",
+    "tags": [
+      "AgTech",
+      "SynBio",
+      "Biotech",
+      "SaaS"
+    ],
+    "logo_color": "#15803D",
+    "aliases": []
   },
   {
     "slug": "juvena-therapeutics",
@@ -157,7 +328,16 @@
     "sector": "Biotech",
     "website_url": "https://www.juvenatherapeutics.com/",
     "linkedin_url": "https://www.linkedin.com/company/juvena-therapeutics/",
-    "news_feed_url": "https://www.juvenatherapeutics.com/news"
+    "news_feed_url": "https://www.juvenatherapeutics.com/news",
+    "description": "Juvena Therapeutics utilizes AI platforms to discover and develop therapeutic proteins for tissue regeneration.",
+    "tags": [
+      "Biotech",
+      "Therapeutics",
+      "AI Discovery",
+      "Regenerative"
+    ],
+    "logo_color": "#60A5FA",
+    "aliases": []
   },
   {
     "slug": "ketos",
@@ -165,7 +345,17 @@
     "sector": "Water Tech",
     "website_url": "https://ketos.co/",
     "linkedin_url": "https://www.linkedin.com/company/ketosinc./",
-    "news_feed_url": "https://www.ketos.co/blog"
+    "news_feed_url": "https://www.ketos.co/blog",
+    "description": "Ketos provides smart IoT water monitoring hardware and analytics to automate water quality testing.",
+    "tags": [
+      "Water Tech",
+      "IoT",
+      "Hardware",
+      "SaaS",
+      "Climate Tech"
+    ],
+    "logo_color": "#38BDF8",
+    "aliases": []
   },
   {
     "slug": "kraus-hamdani-aerospace",
@@ -173,7 +363,16 @@
     "sector": "Aerospace / Defense",
     "website_url": "https://www.khaero.com/",
     "linkedin_url": "https://www.linkedin.com/company/kraus-aerospace/?originalSubdomain=ru",
-    "news_feed_url": "https://www.kraushamdaniaero.com/news"
+    "news_feed_url": "https://www.kraushamdaniaero.com/news",
+    "description": "Kraus Hamdani Aerospace manufactures solar-electric, autonomous unmanned aerial systems (UAS) for long-endurance communication and surveillance.",
+    "tags": [
+      "Aerospace",
+      "Autonomous",
+      "Defense",
+      "Hardware"
+    ],
+    "logo_color": "#475569",
+    "aliases": []
   },
   {
     "slug": "mai",
@@ -181,7 +380,16 @@
     "sector": "Marketing / AI",
     "website_url": "https://www.mai.co/",
     "linkedin_url": "https://www.linkedin.com/company/mai-agents/",
-    "news_feed_url": "https://www.mai.com/blog"
+    "news_feed_url": "https://www.mai.com/blog",
+    "description": "Mai develops AI-driven computer vision and visual search tools to transform digital commerce experiences.",
+    "tags": [
+      "AI",
+      "Computer Vision",
+      "Retail Tech",
+      "E-commerce"
+    ],
+    "logo_color": "#F43F5E",
+    "aliases": []
   },
   {
     "slug": "mammoth-biosciences",
@@ -189,15 +397,33 @@
     "sector": "Biotech / CRISPR",
     "website_url": "https://mammoth.bio/",
     "linkedin_url": "https://www.linkedin.com/company/mammothbio/",
-    "news_feed_url": "https://mammoth.bio/news/"
+    "news_feed_url": "https://mammoth.bio/news/",
+    "description": "Mammoth Biosciences builds next-generation CRISPR-based diagnostics and precision gene-editing therapeutics.",
+    "tags": [
+      "CRISPR",
+      "Biotech",
+      "Diagnostics",
+      "Therapeutics"
+    ],
+    "logo_color": "#2563EB",
+    "aliases": []
   },
   {
     "slug": "node",
     "name": "Node",
     "sector": "Platform / Emerging Tech",
-    "website_url": "https://nodejs.org/en",
+    "website_url": "https://nodejs.org/en/",
     "linkedin_url": "https://www.linkedin.com/company/node-js/",
-    "news_feed_url": "https://www.node.com/blog"
+    "news_feed_url": "https://www.node.com/blog",
+    "description": "Node.js is an open-source, cross-platform JavaScript runtime environment that executes JavaScript code outside a web browser.",
+    "tags": [
+      "PropTech",
+      "SaaS",
+      "B2B",
+      "Software"
+    ],
+    "logo_color": "#E2E8F0",
+    "aliases": []
   },
   {
     "slug": "openwater",
@@ -205,7 +431,16 @@
     "sector": "MedTech",
     "website_url": "https://www.openwater.health/",
     "linkedin_url": "https://www.linkedin.com/company/openwater-health/",
-    "news_feed_url": "https://www.openwater.health/news"
+    "news_feed_url": "https://www.openwater.health/news",
+    "description": "Openwater is developing medical imaging and therapeutic devices using opto-electronics and holography to target brain diseases and cancer.",
+    "tags": [
+      "Medical Device",
+      "Holography",
+      "Hardware",
+      "Therapeutics"
+    ],
+    "logo_color": "#0EA5E9",
+    "aliases": []
   },
   {
     "slug": "phoenix-tailings",
@@ -213,7 +448,16 @@
     "sector": "Cleantech / Materials",
     "website_url": "https://phoenixtailings.com/",
     "linkedin_url": "https://www.linkedin.com/company/phoenixtailings/",
-    "news_feed_url": "https://www.phoenixtailings.com/news"
+    "news_feed_url": "https://www.phoenixtailings.com/news",
+    "description": "Phoenix Tailings refines industrial waste tailings into zero-waste critical metals like rare earth elements.",
+    "tags": [
+      "Mining",
+      "CleanTech",
+      "Sustainability",
+      "Climate Tech"
+    ],
+    "logo_color": "#84CC16",
+    "aliases": []
   },
   {
     "slug": "programmable-medicine",
@@ -221,7 +465,16 @@
     "sector": "Biotech",
     "website_url": "https://programmablemedicine.com/",
     "linkedin_url": null,
-    "news_feed_url": "https://www.programmablemedicine.com/"
+    "news_feed_url": "https://www.programmablemedicine.com/",
+    "description": "Programmable Medicine engineers synthetic gene circuits and delivery vectors to program cell behaviors and drug release.",
+    "tags": [
+      "SynBio",
+      "Gene Therapy",
+      "Biotech",
+      "R&D"
+    ],
+    "logo_color": "#8B5CF6",
+    "aliases": []
   },
   {
     "slug": "siren-biotechnology",
@@ -229,7 +482,16 @@
     "sector": "Biotech / Gene Therapy",
     "website_url": "https://sirenbiotechnology.com/",
     "linkedin_url": "https://www.linkedin.com/company/siren-biotechnology-inc/",
-    "news_feed_url": "https://www.sirenbiotechnology.com/news"
+    "news_feed_url": "https://www.sirenbiotechnology.com/news",
+    "description": "Siren Biotechnologies pioneers universal AAV gene therapies to treat solid tumors and severe genetic disorders.",
+    "tags": [
+      "Gene Therapy",
+      "Oncology",
+      "Biotech",
+      "Clinical Stage"
+    ],
+    "logo_color": "#D946EF",
+    "aliases": []
   },
   {
     "slug": "thinkcerca",
@@ -237,7 +499,16 @@
     "sector": "EdTech",
     "website_url": "https://www.thinkcerca.com/",
     "linkedin_url": "https://www.linkedin.com/company/thinkcerca/",
-    "news_feed_url": "https://www.thinkcerca.com/blog"
+    "news_feed_url": "https://www.thinkcerca.com/blog",
+    "description": "ThinkCERCA is a personalized literacy platform designed to teach critical thinking and argumentative writing across K-12 classrooms.",
+    "tags": [
+      "EdTech",
+      "K12",
+      "SaaS",
+      "Literacy"
+    ],
+    "logo_color": "#EA580C",
+    "aliases": []
   },
   {
     "slug": "tinkergarten",
@@ -245,7 +516,16 @@
     "sector": "EdTech / Outdoor Learning",
     "website_url": "https://www.tinkergarten.com/",
     "linkedin_url": "https://www.linkedin.com/company/thinkcerca/",
-    "news_feed_url": "https://www.tinkergarten.com/blog"
+    "news_feed_url": "https://www.tinkergarten.com/blog",
+    "description": "Tinkergarten provides outdoor-based childhood play curriculums and training to develop physical and social skills.",
+    "tags": [
+      "EdTech",
+      "Early Childhood",
+      "Outdoors",
+      "Education"
+    ],
+    "logo_color": "#16A34A",
+    "aliases": []
   },
   {
     "slug": "vyv",
@@ -253,7 +533,16 @@
     "sector": "Lighting / Antimicrobial",
     "website_url": "https://vyv.tech/",
     "linkedin_url": "https://www.linkedin.com/company/vyvtech/",
-    "news_feed_url": "https://www.vyv.tech/news"
+    "news_feed_url": "https://www.vyv.tech/news",
+    "description": "Vyv produces continuous antimicrobial LED lighting solutions to sanitize public spaces, homes, and offices.",
+    "tags": [
+      "CleanTech",
+      "LED",
+      "Hardware",
+      "Sanitization"
+    ],
+    "logo_color": "#22D3EE",
+    "aliases": []
   },
   {
     "slug": "humans-and",
@@ -261,6 +550,15 @@
     "sector": "Consumer / Community",
     "website_url": "https://humansand.ai/",
     "linkedin_url": "https://www.linkedin.com/company/humansand/",
-    "news_feed_url": "https://www.humansand.com/journal"
+    "news_feed_url": "https://www.humansand.com/journal",
+    "description": "Humans& develops genomic and multi-omic profiling platforms to target chronic diseases associated with aging.",
+    "tags": [
+      "Genetics",
+      "Omics",
+      "Biotech",
+      "AI"
+    ],
+    "logo_color": "#A78BFA",
+    "aliases": []
   }
 ]

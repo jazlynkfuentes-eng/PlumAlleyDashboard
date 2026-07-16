@@ -23,7 +23,7 @@ export function Sidebar({ onOpenChat }: { onOpenChat?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-full w-[240px] shrink-0 flex-col border-r border-[var(--border)] bg-[var(--white)]">
+    <aside className="flex h-full w-[240px] shrink-0 flex-col border-r border-[var(--border-strong)] bg-[var(--bg-primary)]">
       <div className="border-b border-[var(--border)] px-5 py-6">
         <Link href="/" className="block">
           <PlumAlleyLogo size="sm" />
@@ -43,10 +43,10 @@ export function Sidebar({ onOpenChat }: { onOpenChat?: () => void }) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-sm px-3 py-2.5 text-[15px] transition-colors",
+                "flex items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-[15px] transition-colors",
                 active
-                  ? "bg-[var(--black)] text-[var(--white)]"
-                  : "text-[var(--black)] hover:bg-[var(--muted-bg)]",
+                  ? "bg-[var(--plum)] text-[var(--white)]"
+                  : "text-[var(--black)] hover:bg-[var(--bg-tertiary)]",
               )}
             >
               <Icon size={18} strokeWidth={1.75} />
@@ -60,7 +60,7 @@ export function Sidebar({ onOpenChat }: { onOpenChat?: () => void }) {
         <button
           type="button"
           onClick={onOpenChat}
-          className="flex w-full items-center gap-3 rounded-sm border border-[var(--border-strong)] px-3 py-2.5 text-left text-[15px] transition-colors hover:bg-[var(--muted-bg)]"
+          className="flex w-full items-center gap-3 rounded-[var(--radius-sm)] border border-[var(--border-strong)] bg-[var(--bg-secondary)] px-3 py-2.5 text-left text-[15px] transition-colors hover:border-[var(--plum)] hover:text-[var(--plum)]"
         >
           <PanelRightOpen size={18} strokeWidth={1.75} />
           Ask AI

@@ -9,7 +9,6 @@ export default async function PortfolioPage() {
   const to = endOfLocalDay();
 
   const companies = await prisma.company.findMany({
-    where: { linkedinUrl: { not: null } },
     orderBy: { name: "asc" },
     include: {
       updates: {
@@ -27,6 +26,9 @@ export default async function PortfolioPage() {
     slug: c.slug,
     name: c.name,
     sector: c.sector,
+    description: c.description,
+    logoColor: c.logoColor,
+    websiteUrl: c.websiteUrl,
     linkedinUrl: c.linkedinUrl,
     todayCount: c.updates.length,
     lastUpdated: c.lastFetchedAt,
@@ -38,11 +40,12 @@ export default async function PortfolioPage() {
         <p className="text-sm uppercase tracking-[0.14em] text-[var(--grey)]">
           Portfolio
         </p>
-        <h1 className="mt-2 text-4xl font-black tracking-tight">
+        <h1 className="font-display mt-2 text-4xl font-bold tracking-tight">
           {companies.length} Companies
         </h1>
         <p className="mt-2 max-w-2xl text-[var(--grey)]">
-          LinkedIn company-page posts only. Companies without a LinkedIn URL are omitted.
+          Each card links to the company website. LinkedIn appears only when a
+          company page URL is on file.
         </p>
       </header>
       <CompanyGrid companies={cards} />

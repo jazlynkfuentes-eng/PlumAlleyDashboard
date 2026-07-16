@@ -114,7 +114,7 @@ try {
           <p className="text-sm uppercase tracking-[0.14em] text-[var(--grey)]">
             Dashboard
           </p>
-          <h1 className="mt-2 text-4xl font-black tracking-tight">
+          <h1 className="font-display mt-2 text-4xl font-bold tracking-tight">
             {isToday ? "Today's Feed" : "Portfolio Feed"}
           </h1>
           <p className="mt-2 text-[var(--grey)]">{dateLabel}</p>
@@ -154,7 +154,7 @@ try {
 
       <section className="mb-10">
         <div className="mb-4 flex items-end justify-between gap-4">
-          <h2 className="text-2xl font-bold">
+          <h2 className="font-display text-2xl font-bold">
             {isToday ? "Today's Portfolio Digest" : `Digest · ${dateLabel}`}
           </h2>
           <Link href="/ai" className="text-sm underline underline-offset-4">
@@ -162,17 +162,20 @@ try {
           </Link>
         </div>
         {summaries.length === 0 ? (
-          <div className="border border-[var(--border)] px-5 py-8 text-[var(--grey)]">
+          <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-secondary)] px-5 py-8 text-[var(--grey)] shadow-[var(--shadow-sm)]">
             No AI summaries for this day yet. LinkedIn posts arrive from the n8n workflow
             (or Refresh now when <code>APIFY_TOKEN</code> is set).
           </div>
         ) : (
           <div className="space-y-3">
             {summaries.map((s) => (
-              <article key={s.id} className="border border-[var(--border)] px-5 py-4">
+              <article
+                key={s.id}
+                className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-secondary)] px-5 py-4 shadow-[var(--shadow-sm)]"
+              >
                 <Link
                   href={`/companies/${s.company.slug}`}
-                  className="font-bold hover:underline"
+                  className="font-bold hover:text-[var(--plum)]"
                 >
                   {s.company.name}
                 </Link>
@@ -186,7 +189,7 @@ try {
       </section>
 
       <section>
-        <h2 className="mb-4 text-2xl font-bold">
+        <h2 className="font-display mb-4 text-2xl font-bold">
           {sp.date ? "Feed for this date" : "Recent feed (last 14 days)"}
         </h2>
         <Suspense fallback={<div className="h-24 border border-[var(--border)]" />}>

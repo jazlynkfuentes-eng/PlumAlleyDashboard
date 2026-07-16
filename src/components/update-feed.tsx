@@ -49,18 +49,18 @@ export function UpdateFeed({
 }) {
   if (items.length === 0) {
     return (
-      <div className="border border-[var(--border)] px-5 py-10 text-[var(--grey)]">
-        No official updates match these filters yet.
+      <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-secondary)] px-5 py-10 text-[var(--grey)] shadow-[var(--shadow-sm)]">
+        No updates yet.
       </div>
     );
   }
 
   return (
-    <ol className="border-t border-[var(--border)]">
+    <ol className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-secondary)] shadow-[var(--shadow-sm)]">
       {items.map((item) => (
         <li
           key={item.id}
-          className="border-b border-[var(--border)] py-5 transition-colors hover:bg-[var(--muted-bg)]/50"
+          className="border-b border-[var(--border)] px-5 py-5 transition-colors last:border-b-0 hover:bg-[var(--bg-tertiary)]/60"
         >
           <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--grey)]">
             {showCompany && (
