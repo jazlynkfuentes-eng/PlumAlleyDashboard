@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { runDailyIngest } from "@/lib/ingest";
+import { scheduleNextIngestBatch } from "@/lib/schedule-ingest-batch";
 
 function authorized(req: Request) {
   const header = req.headers.get("authorization") ?? "";
@@ -20,9 +21,22 @@ export async function POST(req: Request) {
   const companySlug =
     typeof body.companySlug === "string" ? body.companySlug : undefined;
   const force = body.force === true;
+  const runId = typeof body.runId === "string" ? body.runId : undefined;
+  const batchIndex =
+    typeof body.batchIndex === "number" && Number.isFinite(body.batchIndex)
+      ? body.batchIndex
+      : undefined;
+  // Client-driven loops (Refresh button) pass chain:false to avoid double-trigger.
+  const chain = body.chain !== false;
 
   try {
-    const result = await runDailyIngest({ companySlug, force });
+    const result = await runDailyIngest({
+      companySlug,
+      force,
+      runId,
+      batchIndex,
+    });
+    scheduleNextIngestBatch(req, result, { enabled: chain });
     return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json(
@@ -40,6 +54,7 @@ export async function GET(req: Request) {
 
   try {
     const result = await runDailyIngest({ force: true });
+    scheduleNextIngestBatch(req, result);
     return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json(

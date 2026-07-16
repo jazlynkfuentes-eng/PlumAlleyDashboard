@@ -58,20 +58,37 @@ export function SettingsClient({
     setBusy(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/jobs/daily-ingest", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET ?? "dev-cron-secret"}`,
-        },
-        body: JSON.stringify(slug ? { companySlug: slug, force: true } : { force: true }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Ingest failed");
+      let body: Record<string, unknown> = slug
+        ? { companySlug: slug, force: true, chain: false }
+        : { force: true, chain: false };
+      let total = 0;
+
+      for (;;) {
+        const res = await fetch("/api/jobs/daily-ingest", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET ?? "dev-cron-secret"}`,
+          },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Ingest failed");
+        total += data.reports?.length ?? 0;
+
+        if (slug || data.done === true || data.nextBatchIndex == null) break;
+        if (data.skipped && data.reason === "batch_not_ready") {
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+        body = {
+          runId: data.runId,
+          batchIndex: data.nextBatchIndex,
+          chain: false,
+        };
+      }
+
       setMessage(
-        `LinkedIn ingest ran for ${data.reports?.length ?? 0} compan${
-          (data.reports?.length ?? 0) === 1 ? "y" : "ies"
-        }. Prefer the n8n workflow for production LinkedIn pulls.`,
+        `Ingest ran for ${total} compan${total === 1 ? "y" : "ies"}. Prefer the n8n workflow for production LinkedIn pulls.`,
       );
       router.refresh();
     } catch (e) {

@@ -20,18 +20,59 @@ export function RefreshButton({
     setBusy(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/jobs/daily-ingest", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET ?? "dev-cron-secret"}`,
-        },
-        body: JSON.stringify({ force: true }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Refresh failed");
+      // chain:false — this button drives batch continuation; don't also after()-trigger.
+      let body: Record<string, unknown> = { force: true, chain: false };
+      let total = 0;
+      let lastBatchLabel = "";
+
+      for (;;) {
+        const res = await fetch("/api/jobs/daily-ingest", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET ?? "dev-cron-secret"}`,
+          },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Refresh failed");
+
+        total += data.reports?.length ?? 0;
+        if (
+          typeof data.batchIndex === "number" &&
+          typeof data.totalBatches === "number"
+        ) {
+          lastBatchLabel = ` · batch ${data.batchIndex + 1}/${data.totalBatches}`;
+        }
+
+        if (
+          data.reason === "already_ran_today" ||
+          data.reason === "run_already_finished" ||
+          data.done === true ||
+          data.nextBatchIndex == null
+        ) {
+          break;
+        }
+
+        if (data.skipped && data.reason === "batch_not_ready") {
+          await new Promise((r) => setTimeout(r, 1500));
+          body = {
+            runId: data.runId,
+            batchIndex: data.nextBatchIndex,
+            chain: false,
+          };
+          continue;
+        }
+
+        body = {
+          runId: data.runId,
+          batchIndex: data.nextBatchIndex,
+          chain: false,
+        };
+      }
+
       setMessage(
-        `Updated ${data.reports?.length ?? 0} companies · ${new Date().toLocaleTimeString()}`,
+        `Updated ${total} companies${lastBatchLabel} · ${new Date().toLocaleTimeString()}`,
       );
       router.refresh();
     } catch (e) {

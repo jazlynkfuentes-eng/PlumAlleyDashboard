@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 /**
  * Once per browser tab session, ensure today's automatic ingest has run.
+ * Continues calling until all batches finish (or today's run is already complete).
  * Manual refresh still available via RefreshButton.
  */
 export function DailyAutoRefresh() {
@@ -22,13 +23,35 @@ export function DailyAutoRefresh() {
 
     void (async () => {
       try {
-        const res = await fetch("/api/jobs/ensure-daily", { method: "POST" });
-        if (!res.ok) return;
-        const data = await res.json();
+        let ranAny = false;
+
+        for (;;) {
+          const res = await fetch("/api/jobs/ensure-daily", { method: "POST" });
+          if (!res.ok) return;
+          const data = await res.json();
+
+          if (data.ran) ranAny = true;
+
+          // Finished for today (completed earlier, or this call finished the last batch).
+          if (
+            data.reason === "already_ran_today" ||
+            data.reason === "run_already_finished" ||
+            data.done === true ||
+            data.nextBatchIndex == null
+          ) {
+            break;
+          }
+
+          // Batch claimed by a concurrent worker — brief pause then resume.
+          if (data.skipped && data.reason === "batch_not_ready") {
+            await new Promise((r) => setTimeout(r, 1500));
+          }
+        }
+
         if (typeof sessionStorage !== "undefined") {
           sessionStorage.setItem(key, "1");
         }
-        if (data.ran) {
+        if (ranAny) {
           router.refresh();
         }
       } catch {
