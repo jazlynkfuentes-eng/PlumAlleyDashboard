@@ -21,7 +21,13 @@ export default async function CompanyDetailPage({
 
   const [updates, summary] = await Promise.all([
     prisma.update.findMany({
-      where: { companyId: company.id, sourceType: "linkedin", rawSource: { not: null } },
+      where: {
+        companyId: company.id,
+        OR: [
+          { sourceType: "linkedin", rawSource: { not: null } },
+          { sourceType: "website" },
+        ],
+      },
       include: {
         company: { select: { name: true, slug: true, sector: true } },
       },
@@ -58,11 +64,13 @@ export default async function CompanyDetailPage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-sm text-[var(--grey)]">{company.sector}</p>
-            <h1 className="font-display mt-1 text-4xl font-bold tracking-tight">{company.name}</h1>
+            <h1 className="font-display mt-1 text-4xl font-bold tracking-tight">
+              {company.name}
+            </h1>
             <p className="mt-3 max-w-2xl text-[var(--grey)]">{company.description}</p>
             {todayCount > 0 && (
               <p className="mt-3 inline-block bg-[var(--plum)] px-2 py-1 text-xs font-medium text-[var(--white)]">
-                {todayCount} LinkedIn post{todayCount === 1 ? "" : "s"} today
+                {todayCount} update{todayCount === 1 ? "" : "s"} today
               </p>
             )}
           </div>
@@ -91,36 +99,31 @@ export default async function CompanyDetailPage({
         </div>
         {!company.linkedinUrl && (
           <p className="mt-4 text-sm text-[var(--grey)]">
-            No LinkedIn page on file — this company is hidden from LinkedIn monitoring.
+            No LinkedIn page on file — LinkedIn monitoring is skipped for this company.
+            Website news still appears when available.
           </p>
         )}
       </header>
 
-      {!company.linkedinUrl ? (
-        <section className="mt-8 border border-[var(--border)] px-5 py-10 text-[var(--grey)]">
-          LinkedIn-only mode: no feed for companies without a LinkedIn URL.
+      {company.linkedinUrl && (
+        <section className="mt-8">
+          <h2 className="font-display text-2xl font-bold">Today&apos;s AI Summary</h2>
+          {summary ? (
+            <p className="mt-3 max-w-3xl rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-secondary)] px-5 py-4 leading-relaxed shadow-[var(--shadow-sm)]">
+              {summary.content}
+            </p>
+          ) : (
+            <p className="mt-3 text-[var(--grey)]">
+              No summary for today yet. Summaries appear after LinkedIn posts are ingested.
+            </p>
+          )}
         </section>
-      ) : (
-        <>
-          <section className="mt-8">
-            <h2 className="font-display text-2xl font-bold">Today&apos;s AI Summary</h2>
-            {summary ? (
-              <p className="mt-3 max-w-3xl border border-[var(--border)] px-5 py-4 leading-relaxed">
-                {summary.content}
-              </p>
-            ) : (
-              <p className="mt-3 text-[var(--grey)]">
-                No summary for today yet. Summaries appear after LinkedIn posts are ingested.
-              </p>
-            )}
-          </section>
-
-          <section className="mt-10">
-            <h2 className="font-display mb-4 text-2xl font-bold">LinkedIn Feed</h2>
-            <UpdateFeed items={updates} showCompany={false} />
-          </section>
-        </>
       )}
+
+      <section className="mt-10">
+        <h2 className="font-display mb-4 text-2xl font-bold">Company Feed</h2>
+        <UpdateFeed items={updates} showCompany={false} />
+      </section>
     </div>
   );
 }

@@ -42,7 +42,6 @@ let keyword: string | undefined = undefined;
 
 try {
   companies = await prisma.company.findMany({
-    where: { linkedinUrl: { not: null } },
     orderBy: { name: "asc" },
     select: { id: true, slug: true, name: true },
   });
@@ -55,13 +54,17 @@ try {
 
   // Default feed: show recent activity (last 14 days) when viewing "today"
   // so the timeline isn't empty before ingest — date filter still narrows to one day when set.
-  const feedFrom = sp.date ? from : startOfLocalDay(new Date(Date.now() - 13 * 24 * 60 * 60 * 1000));
+  const feedFrom = sp.date
+    ? from
+    : startOfLocalDay(new Date(Date.now() - 13 * 24 * 60 * 60 * 1000));
   const feedTo = to;
 
   updates = await prisma.update.findMany({
     where: {
-      sourceType: "linkedin",
-      rawSource: { not: null },
+      OR: [
+        { sourceType: "linkedin", rawSource: { not: null } },
+        { sourceType: "website" },
+      ],
       publishedAt: { gte: feedFrom, lte: feedTo },
       ...(companyFilter ? { companyId: companyFilter.id } : {}),
       ...(keyword
@@ -131,9 +134,10 @@ try {
             })}
           </p>
           <p className="mt-2 max-w-2xl text-[var(--grey)]">
-            Official LinkedIn company-page posts only — chronologically, with direct source
-            links. Date-only posts show the calendar day (no fake 12:00 AM); timed posts show
-            the real publish time.
+            Official LinkedIn company-page posts and website news/blog updates —
+            chronologically, with direct source links. Date-only posts show the calendar
+            day (no fake 12:00 AM); change-detected pages show “Detected …” when publish
+            time is unknown.
           </p>
           {lastRun && (
             <p className="mt-2 text-sm text-[var(--grey)]">

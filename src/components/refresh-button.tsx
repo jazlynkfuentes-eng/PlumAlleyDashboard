@@ -47,7 +47,7 @@ export function RefreshButton({
         type="button"
         onClick={refresh}
         disabled={busy}
-        className="inline-flex items-center gap-2 bg-[var(--black)] px-4 py-2 text-sm text-[var(--white)] disabled:opacity-50"
+        className="inline-flex items-center gap-2 bg-[var(--plum)] px-4 py-2 text-sm text-[var(--white)] transition-colors hover:bg-[var(--plum-hover)] disabled:opacity-50"
       >
         <RefreshCw size={15} className={busy ? "animate-spin" : undefined} />
         {busy ? "Refreshing…" : label}

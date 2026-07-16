@@ -32,10 +32,18 @@ function LinkedInGlyph({ size = 12 }: { size?: number }) {
 }
 
 export function SourceBadge({ type }: { type: "linkedin" | "website" }) {
+  const isLinkedIn = type === "linkedin";
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-sm border border-[var(--border-strong)] px-2 py-0.5 text-xs uppercase tracking-wide text-[var(--grey)]">
-      {type === "linkedin" ? <LinkedInGlyph size={12} /> : <Globe size={12} />}
-      {type === "linkedin" ? "LinkedIn" : "Website"}
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] border px-2 py-0.5 text-xs uppercase tracking-wide",
+        isLinkedIn
+          ? "border-[var(--plum)]/30 bg-[var(--plum-light)] text-[var(--plum)]"
+          : "border-[var(--border-strong)] bg-[var(--bg-tertiary)] text-[var(--grey)]",
+      )}
+    >
+      {isLinkedIn ? <LinkedInGlyph size={12} /> : <Globe size={12} />}
+      {isLinkedIn ? "LinkedIn" : "Website"}
     </span>
   );
 }
@@ -86,7 +94,7 @@ export function UpdateFeed({
             href={item.sourceUrl}
             target="_blank"
             rel="noreferrer"
-            className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4"
+            className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--plum)] underline underline-offset-4 hover:text-[var(--plum-hover)]"
           >
             View original <ExternalLink size={14} />
           </a>

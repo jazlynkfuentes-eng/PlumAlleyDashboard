@@ -8,6 +8,10 @@ import {
   authorMatchesCompany,
   normalizeLinkedInCompanyUrl,
 } from "@/lib/linkedin-validate";
+import {
+  ingestCompanyWebsite,
+  type WebsiteIngestReport,
+} from "@/lib/website-ingest";
 import type { Company } from "@prisma/client";
 
 function hashId(input: string) {
@@ -103,14 +107,19 @@ export type IngestReport = {
   companySlug: string;
   linkedin: number;
   linkedinFiltered: number;
+  website: number;
+  websiteStrategy?: string | null;
   error?: string;
 };
 
-export async function ingestCompany(company: Company): Promise<IngestReport> {
-  const report: IngestReport = {
-    companySlug: company.slug,
+/** LinkedIn-only company ingest (Apify). Does not fetch websites. */
+export async function ingestCompanyLinkedIn(
+  company: Company,
+): Promise<Pick<IngestReport, "linkedin" | "linkedinFiltered" | "error">> {
+  const report = {
     linkedin: 0,
     linkedinFiltered: 0,
+    error: undefined as string | undefined,
   };
 
   if (!company.linkedinUrl) {
@@ -118,8 +127,7 @@ export async function ingestCompany(company: Company): Promise<IngestReport> {
   }
 
   if (!process.env.APIFY_TOKEN) {
-    report.error =
-      "No APIFY_TOKEN — LinkedIn posts arrive via n8n → /api/updates/linkedin";
+    // n8n → /api/updates/linkedin is the primary LinkedIn path; silent skip
     return report;
   }
 
@@ -169,6 +177,36 @@ export async function ingestCompany(company: Company): Promise<IngestReport> {
   return report;
 }
 
+/** Combined LinkedIn (optional Apify) + website fetch for one company. */
+export async function ingestCompany(company: Company): Promise<IngestReport> {
+  const report: IngestReport = {
+    companySlug: company.slug,
+    linkedin: 0,
+    linkedinFiltered: 0,
+    website: 0,
+    websiteStrategy: null,
+  };
+
+  const errors: string[] = [];
+
+  if (company.linkedinUrl) {
+    const li = await ingestCompanyLinkedIn(company);
+    report.linkedin = li.linkedin;
+    report.linkedinFiltered = li.linkedinFiltered;
+    if (li.error) errors.push(li.error);
+  }
+
+  if (company.websiteUrl) {
+    const web: WebsiteIngestReport = await ingestCompanyWebsite(company);
+    report.website = web.website;
+    report.websiteStrategy = web.strategy;
+    if (web.error) errors.push(web.error);
+  }
+
+  if (errors.length) report.error = errors.join(" · ");
+  return report;
+}
+
 export async function runDailyIngest(options?: {
   companySlug?: string;
   force?: boolean;
@@ -200,7 +238,7 @@ export async function runDailyIngest(options?: {
 
   const companies = await prisma.company.findMany({
     where: {
-      linkedinUrl: { not: null },
+      OR: [{ linkedinUrl: { not: null } }, { websiteUrl: { not: null } }],
       ...(options?.companySlug ? { slug: options.companySlug } : {}),
     },
     orderBy: { name: "asc" },
@@ -215,6 +253,7 @@ export async function runDailyIngest(options?: {
         companySlug: company.slug,
         linkedin: 0,
         linkedinFiltered: 0,
+        website: 0,
         error: e instanceof Error ? e.message : "fatal company error",
       });
     }

@@ -13,8 +13,10 @@ export default async function PortfolioPage() {
     include: {
       updates: {
         where: {
-          sourceType: "linkedin",
-          rawSource: { not: null },
+          OR: [
+            { sourceType: "linkedin", rawSource: { not: null } },
+            { sourceType: "website" },
+          ],
           publishedAt: { gte: from, lte: to },
         },
         select: { id: true },

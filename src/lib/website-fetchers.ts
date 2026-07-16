@@ -76,7 +76,7 @@ function toItem(args: {
   return {
     sourceUrl: args.sourceUrl,
     title: args.title,
-    excerpt: args.excerpt.slice(0, 500),
+    excerpt: args.excerpt.slice(0, 200),
     content: args.content,
     publishedAt: args.coerced.date,
     publishedAtPrecision: args.coerced.precision,
@@ -127,7 +127,7 @@ export async function fetchViaRss(company: Company): Promise<WebsiteFetchResult 
         const coerced = coercePublishedAt(item.isoDate ?? item.pubDate ?? item.published);
         if (!coerced) continue;
         const title = item.title ?? null;
-        const excerpt = (item.contentSnippet ?? item.content ?? title ?? "").slice(0, 500);
+        const excerpt = (item.contentSnippet ?? item.content ?? title ?? "").slice(0, 200);
         items.push(
           toItem({
             sourceUrl: link,
@@ -238,14 +238,23 @@ async function extractArticleTime(articleUrl: string, websiteUrl: string) {
       $("[itemprop=datePublished]").attr("content") ||
         $("[itemprop=datePublished]").attr("datetime"),
     ];
+    let coerced = null as ReturnType<typeof coercePublishedAt>;
     for (const c of candidates) {
-      const coerced = coercePublishedAt(c);
-      if (coerced) return coerced;
+      coerced = coercePublishedAt(c);
+      if (coerced) break;
     }
+    if (!coerced) return null;
+
+    const excerpt =
+      $('meta[property="og:description"]').attr("content") ||
+      $('meta[name="description"]').attr("content") ||
+      $("article p, .post p, main p").first().text().replace(/\s+/g, " ").trim() ||
+      "";
+
+    return { coerced, excerpt: excerpt.slice(0, 200) };
   } catch {
     return null;
   }
-  return null;
 }
 
 /** Strategy 3: news/blog listing → follow article links for published_time / time datetime. */
@@ -286,15 +295,15 @@ export async function fetchViaArticleMeta(company: Company): Promise<WebsiteFetc
 
       const items: WebsiteFetchItem[] = [];
       for (const link of links.slice(0, 12)) {
-        const coerced = await extractArticleTime(link.href, company.websiteUrl);
-        if (!coerced) continue;
+        const extracted = await extractArticleTime(link.href, company.websiteUrl);
+        if (!extracted) continue;
         items.push(
           toItem({
             sourceUrl: link.href,
             title: link.title,
-            excerpt: link.title,
-            content: link.title,
-            coerced,
+            excerpt: extracted.excerpt || link.title,
+            content: extracted.excerpt || link.title,
+            coerced: extracted.coerced,
             note: `article_meta:${listing}`,
           }),
         );
