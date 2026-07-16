@@ -101,7 +101,7 @@ try {
 }
 
   const { cookies } = require('next/headers');
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const accessGranted = cookieStore.get('access_granted');
   if (!accessGranted) {
     return <AccessGate />;
