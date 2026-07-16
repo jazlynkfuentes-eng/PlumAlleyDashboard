@@ -47,8 +47,71 @@ function sameOrigin(candidate: string, base: string) {
   }
 }
 
-function ensureOwnSite(url: string, websiteUrl: string) {
-  return sameOrigin(url, websiteUrl);
+/** www-insensitive host compare + same rough registrable domain (a.com / www.a.com). */
+function relatedHost(candidate: string, base: string) {
+  try {
+    const a = new URL(candidate).hostname.toLowerCase().replace(/^www\./, "");
+    const b = new URL(base).hostname.toLowerCase().replace(/^www\./, "");
+    if (a === b) return true;
+    const ra = a.split(".").slice(-2).join(".");
+    const rb = b.split(".").slice(-2).join(".");
+    return ra === rb && ra.includes(".");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Allow website origin, explicit newsFeedUrl origin, and related hosts
+ * (subdomain / www variants of either). Used so seed blog URLs on a sibling
+ * host are not skipped.
+ */
+function isAllowedCompanyUrl(url: string, company: Company) {
+  if (!company.websiteUrl) return false;
+  if (sameOrigin(url, company.websiteUrl) || relatedHost(url, company.websiteUrl)) {
+    return true;
+  }
+  if (company.newsFeedUrl) {
+    if (sameOrigin(url, company.newsFeedUrl) || relatedHost(url, company.newsFeedUrl)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function normalizeUrlKey(url: string) {
+  try {
+    const u = new URL(url);
+    u.hash = "";
+    let path = u.pathname.replace(/\/+$/, "") || "/";
+    return `${u.origin.toLowerCase()}${path.toLowerCase()}`;
+  } catch {
+    return url.replace(/\/+$/, "").toLowerCase();
+  }
+}
+
+function mergeItems(batches: WebsiteFetchItem[][], limit = 40): WebsiteFetchItem[] {
+  const seen = new Set<string>();
+  const out: WebsiteFetchItem[] = [];
+  for (const batch of batches) {
+    for (const item of batch) {
+      const key = normalizeUrlKey(item.sourceUrl);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(item);
+    }
+  }
+  return out
+    .sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime())
+    .slice(0, limit);
+}
+
+function originBase(url: string) {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
 }
 
 async function fetchText(url: string, accept = "text/html,application/xml") {
@@ -62,7 +125,11 @@ async function fetchText(url: string, accept = "text/html,application/xml") {
     redirect: "follow",
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-  return { text: await res.text(), finalUrl: res.url, contentType: res.headers.get("content-type") ?? "" };
+  return {
+    text: await res.text(),
+    finalUrl: res.url,
+    contentType: res.headers.get("content-type") ?? "",
+  };
 }
 
 function toItem(args: {
@@ -85,19 +152,43 @@ function toItem(args: {
   };
 }
 
-/** Strategy 1: RSS / Atom (homepage alternates + common paths). */
-export async function fetchViaRss(company: Company): Promise<WebsiteFetchResult | null> {
+/** Strategy 1: RSS / Atom — try all candidates (news + blog) and merge. */
+export async function fetchViaRss(
+  company: Company,
+): Promise<WebsiteFetchResult | null> {
   if (!company.websiteUrl) return null;
-  const base = company.websiteUrl.replace(/\/$/, "");
+  const siteBase = company.websiteUrl.replace(/\/$/, "");
   const candidates = new Set<string>();
 
   if (company.newsFeedUrl) candidates.add(company.newsFeedUrl);
-  for (const path of ["/feed", "/rss", "/rss.xml", "/blog/rss", "/blog/rss.xml", "/atom.xml", "/news/rss", "/news/feed"]) {
-    candidates.add(`${base}${path}`);
+
+  const bases = new Set<string>([siteBase]);
+  if (company.newsFeedUrl) {
+    const o = originBase(company.newsFeedUrl);
+    if (o) bases.add(o);
+  }
+
+  const feedPaths = [
+    "/feed",
+    "/rss",
+    "/rss.xml",
+    "/blog/rss",
+    "/blog/rss.xml",
+    "/blog/feed",
+    "/atom.xml",
+    "/news/rss",
+    "/news/feed",
+    "/journal/rss",
+    "/journal/feed",
+  ];
+  for (const base of bases) {
+    for (const path of feedPaths) {
+      candidates.add(`${base.replace(/\/$/, "")}${path}`);
+    }
   }
 
   try {
-    const home = await fetchText(base);
+    const home = await fetchText(siteBase);
     const $ = cheerio.load(home.text);
     $('link[rel="alternate"]').each((_, el) => {
       const type = ($(el).attr("type") ?? "").toLowerCase();
@@ -105,8 +196,8 @@ export async function fetchViaRss(company: Company): Promise<WebsiteFetchResult 
       if (!href) return;
       if (type.includes("rss") || type.includes("atom") || type.includes("xml")) {
         try {
-          const abs = new URL(href, base).toString();
-          if (ensureOwnSite(abs, company.websiteUrl!)) candidates.add(abs);
+          const abs = new URL(href, siteBase).toString();
+          if (isAllowedCompanyUrl(abs, company)) candidates.add(abs);
         } catch {
           /* skip */
         }
@@ -116,18 +207,25 @@ export async function fetchViaRss(company: Company): Promise<WebsiteFetchResult 
     /* homepage optional */
   }
 
+  const batches: WebsiteFetchItem[][] = [];
+
   for (const feedUrl of candidates) {
-    if (!ensureOwnSite(feedUrl, company.websiteUrl)) continue;
+    if (!isAllowedCompanyUrl(feedUrl, company)) continue;
     try {
       const feed = await rssParser.parseURL(feedUrl);
       const items: WebsiteFetchItem[] = [];
       for (const item of feed.items ?? []) {
         const link = item.link;
-        if (!link || !ensureOwnSite(link, company.websiteUrl)) continue;
-        const coerced = coercePublishedAt(item.isoDate ?? item.pubDate ?? item.published);
+        if (!link || !isAllowedCompanyUrl(link, company)) continue;
+        const coerced = coercePublishedAt(
+          item.isoDate ?? item.pubDate ?? item.published,
+        );
         if (!coerced) continue;
         const title = item.title ?? null;
-        const excerpt = (item.contentSnippet ?? item.content ?? title ?? "").slice(0, 200);
+        const excerpt = (item.contentSnippet ?? item.content ?? title ?? "").slice(
+          0,
+          200,
+        );
         items.push(
           toItem({
             sourceUrl: link,
@@ -139,37 +237,52 @@ export async function fetchViaRss(company: Company): Promise<WebsiteFetchResult 
           }),
         );
       }
-      if (items.length > 0) {
-        return { strategy: "rss", items: items.slice(0, 20) };
-      }
+      if (items.length > 0) batches.push(items);
     } catch {
       continue;
     }
   }
-  return null;
+
+  const merged = mergeItems(batches, 40);
+  if (merged.length === 0) return null;
+  return { strategy: "rss", items: merged };
 }
 
 function isNewsLikePath(pathname: string) {
-  return /\/(news|blog|press|insights|articles|stories|updates|media)(\/|$)/i.test(pathname);
+  return /\/(news|blog|press|insights|articles|stories|updates|media|journal|resources|posts|announcements|bulletin)(\/|$)/i.test(
+    pathname,
+  );
 }
 
-/** Strategy 2: sitemap.xml lastmod for news/blog/press URLs on same origin. */
-export async function fetchViaSitemap(company: Company): Promise<WebsiteFetchResult | null> {
+/** Strategy 2: sitemap.xml lastmod for news/blog/press URLs. */
+export async function fetchViaSitemap(
+  company: Company,
+): Promise<WebsiteFetchResult | null> {
   if (!company.websiteUrl) return null;
-  const base = company.websiteUrl.replace(/\/$/, "");
-  const sitemapUrls = [`${base}/sitemap.xml`, `${base}/sitemap_index.xml`, `${base}/news-sitemap.xml`];
+  const bases = new Set<string>([company.websiteUrl.replace(/\/$/, "")]);
+  if (company.newsFeedUrl) {
+    const o = originBase(company.newsFeedUrl);
+    if (o) bases.add(o);
+  }
+
+  const sitemapUrls = new Set<string>();
+  for (const base of bases) {
+    sitemapUrls.add(`${base}/sitemap.xml`);
+    sitemapUrls.add(`${base}/sitemap_index.xml`);
+    sitemapUrls.add(`${base}/news-sitemap.xml`);
+  }
 
   for (const smUrl of sitemapUrls) {
+    if (!isAllowedCompanyUrl(smUrl, company)) continue;
     try {
       const { text } = await fetchText(smUrl, "application/xml,text/xml");
       const $ = cheerio.load(text, { xmlMode: true });
       const entries: { loc: string; lastmod: string | null }[] = [];
 
-      // sitemap index → nested sitemaps (own origin only)
       const nested: string[] = [];
       $("sitemap > loc").each((_, el) => {
         const loc = $(el).text().trim();
-        if (loc && ensureOwnSite(loc, company.websiteUrl!)) nested.push(loc);
+        if (loc && isAllowedCompanyUrl(loc, company)) nested.push(loc);
       });
 
       const parseUrlset = (xml: string) => {
@@ -177,9 +290,8 @@ export async function fetchViaSitemap(company: Company): Promise<WebsiteFetchRes
         $$("url").each((__, el) => {
           const loc = $$(el).find("loc").first().text().trim();
           const lastmod = $$(el).find("lastmod").first().text().trim() || null;
-          if (!loc || !ensureOwnSite(loc, company.websiteUrl!)) return;
+          if (!loc || !isAllowedCompanyUrl(loc, company)) return;
           try {
-            if (!isNewsLikePath(new URL(loc).pathname) && !lastmod) return;
             if (!isNewsLikePath(new URL(loc).pathname)) return;
           } catch {
             return;
@@ -190,7 +302,14 @@ export async function fetchViaSitemap(company: Company): Promise<WebsiteFetchRes
 
       parseUrlset(text);
       for (const nestedUrl of nested.slice(0, 8)) {
-        if (!/news|blog|press|post|article/i.test(nestedUrl) && nested.length > 3) continue;
+        if (
+          !/news|blog|press|post|article|journal|stories|resources/i.test(
+            nestedUrl,
+          ) &&
+          nested.length > 3
+        ) {
+          continue;
+        }
         try {
           const nestedDoc = await fetchText(nestedUrl, "application/xml,text/xml");
           parseUrlset(nestedDoc.text);
@@ -200,23 +319,31 @@ export async function fetchViaSitemap(company: Company): Promise<WebsiteFetchRes
       }
 
       const items: WebsiteFetchItem[] = [];
-      for (const entry of entries.slice(0, 25)) {
+      for (const entry of entries.slice(0, 40)) {
         if (!entry.lastmod) continue;
         const coerced = coercePublishedAt(entry.lastmod);
         if (!coerced) continue;
-        const title = entry.loc.split("/").filter(Boolean).pop()?.replace(/[-_]/g, " ") ?? null;
+        const title =
+          entry.loc.split("/").filter(Boolean).pop()?.replace(/[-_]/g, " ") ??
+          null;
         items.push(
           toItem({
             sourceUrl: entry.loc,
             title,
             excerpt: title ?? entry.loc,
             content: title ?? entry.loc,
-            coerced: { date: coerced.date, precision: coerced.precision === "datetime" ? "date" : coerced.precision },
+            coerced: {
+              date: coerced.date,
+              precision:
+                coerced.precision === "datetime" ? "date" : coerced.precision,
+            },
             note: `sitemap:${smUrl}`,
           }),
         );
       }
-      if (items.length > 0) return { strategy: "sitemap", items };
+      if (items.length > 0) {
+        return { strategy: "sitemap", items: mergeItems([items], 40) };
+      }
     } catch {
       continue;
     }
@@ -224,8 +351,8 @@ export async function fetchViaSitemap(company: Company): Promise<WebsiteFetchRes
   return null;
 }
 
-async function extractArticleTime(articleUrl: string, websiteUrl: string) {
-  if (!ensureOwnSite(articleUrl, websiteUrl)) return null;
+async function extractArticleTime(articleUrl: string, company: Company) {
+  if (!isAllowedCompanyUrl(articleUrl, company)) return null;
   try {
     const { text } = await fetchText(articleUrl);
     const $ = cheerio.load(text);
@@ -248,7 +375,11 @@ async function extractArticleTime(articleUrl: string, websiteUrl: string) {
     const excerpt =
       $('meta[property="og:description"]').attr("content") ||
       $('meta[name="description"]').attr("content") ||
-      $("article p, .post p, main p").first().text().replace(/\s+/g, " ").trim() ||
+      $("article p, .post p, main p")
+        .first()
+        .text()
+        .replace(/\s+/g, " ")
+        .trim() ||
       "";
 
     return { coerced, excerpt: excerpt.slice(0, 200) };
@@ -257,19 +388,38 @@ async function extractArticleTime(articleUrl: string, websiteUrl: string) {
   }
 }
 
-/** Strategy 3: news/blog listing → follow article links for published_time / time datetime. */
-export async function fetchViaArticleMeta(company: Company): Promise<WebsiteFetchResult | null> {
-  if (!company.websiteUrl) return null;
-  const listingUrls = [
-    company.newsFeedUrl,
-    `${company.websiteUrl.replace(/\/$/, "")}/news`,
-    `${company.websiteUrl.replace(/\/$/, "")}/blog`,
-    `${company.websiteUrl.replace(/\/$/, "")}/press`,
-    company.websiteUrl,
-  ].filter(Boolean) as string[];
+function listingCandidates(company: Company): string[] {
+  const urls = new Set<string>();
+  if (company.newsFeedUrl) urls.add(company.newsFeedUrl);
 
-  for (const listing of listingUrls) {
-    if (!ensureOwnSite(listing, company.websiteUrl)) continue;
+  const bases = new Set<string>();
+  if (company.websiteUrl) bases.add(company.websiteUrl.replace(/\/$/, ""));
+  if (company.newsFeedUrl) {
+    const o = originBase(company.newsFeedUrl);
+    if (o) bases.add(o);
+  }
+
+  const paths = ["/news", "/blog", "/press", "/journal", "/stories", "/resources"];
+  for (const base of bases) {
+    for (const path of paths) {
+      urls.add(`${base}${path}`);
+    }
+  }
+  if (company.websiteUrl) urls.add(company.websiteUrl);
+
+  return [...urls];
+}
+
+/** Strategy 3: scrape all news/blog listings and merge article links. */
+export async function fetchViaArticleMeta(
+  company: Company,
+): Promise<WebsiteFetchResult | null> {
+  if (!company.websiteUrl) return null;
+
+  const batches: WebsiteFetchItem[][] = [];
+
+  for (const listing of listingCandidates(company)) {
+    if (!isAllowedCompanyUrl(listing, company)) continue;
     try {
       const { text } = await fetchText(listing);
       const $ = cheerio.load(text);
@@ -287,15 +437,16 @@ export async function fetchViaArticleMeta(company: Company): Promise<WebsiteFetc
         } catch {
           return;
         }
-        if (!ensureOwnSite(abs, company.websiteUrl!)) return;
-        if (seen.has(abs)) return;
-        seen.add(abs);
+        if (!isAllowedCompanyUrl(abs, company)) return;
+        const key = normalizeUrlKey(abs);
+        if (seen.has(key)) return;
+        seen.add(key);
         links.push({ href: abs, title });
       });
 
       const items: WebsiteFetchItem[] = [];
       for (const link of links.slice(0, 12)) {
-        const extracted = await extractArticleTime(link.href, company.websiteUrl);
+        const extracted = await extractArticleTime(link.href, company);
         if (!extracted) continue;
         items.push(
           toItem({
@@ -308,19 +459,24 @@ export async function fetchViaArticleMeta(company: Company): Promise<WebsiteFetc
           }),
         );
       }
-      if (items.length > 0) return { strategy: "article_meta", items };
+      if (items.length > 0) batches.push(items);
     } catch {
       continue;
     }
   }
-  return null;
+
+  const merged = mergeItems(batches, 40);
+  if (merged.length === 0) return null;
+  return { strategy: "article_meta", items: merged };
 }
 
 /** Strategy 4: content hash change on news listing / homepage. */
-export async function fetchViaContentHash(company: Company): Promise<WebsiteFetchResult | null> {
+export async function fetchViaContentHash(
+  company: Company,
+): Promise<WebsiteFetchResult | null> {
   if (!company.websiteUrl) return null;
   const target = company.newsFeedUrl || company.websiteUrl;
-  if (!ensureOwnSite(target, company.websiteUrl)) return null;
+  if (!isAllowedCompanyUrl(target, company)) return null;
 
   try {
     const { text } = await fetchText(target);
@@ -372,10 +528,12 @@ const STRATEGY_FN: Record<
  * Pluggable website fetcher — tries strategies in fixed priority order:
  * rss → sitemap → article_meta → content_hash (last-resort page-change only).
  *
+ * Within rss / article_meta, multiple listings (news + blog, website +
+ * newsFeed hosts) are merged and deduped by URL — we do not stop at the
+ * first successful listing.
+ *
  * Preferred strategy (last success) may be tried first ONLY if it is an
- * article-producing strategy (rss/sitemap/article_meta). content_hash is
- * never preferred — otherwise a one-time hash hit would permanently skip
- * real multi-article feeds.
+ * article-producing strategy. content_hash is never preferred.
  */
 export async function fetchCompanyWebsite(
   ctx: WebsiteFetcherContext,
@@ -403,7 +561,6 @@ export async function fetchCompanyWebsite(
     try {
       const result = await STRATEGY_FN[name](company);
       if (result && (result.items.length > 0 || name === "content_hash")) {
-        // content_hash with empty items = unchanged — still a successful strategy
         if (name === "content_hash" && result.items.length === 0) {
           return result;
         }
