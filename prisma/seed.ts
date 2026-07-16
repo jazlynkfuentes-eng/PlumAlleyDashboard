@@ -49,7 +49,17 @@ async function main() {
     upserted += 1;
   }
 
-  console.log(`✅ Upserted ${upserted} companies from data/company-seed.json`);
+  // Remove legacy duplicates from older name→slugify seeds
+  // (e.g. "mai-formerly-markable" alongside canonical "mai").
+  const keepSlugs = companies.map((c) => c.slug);
+  const pruned = await prisma.company.deleteMany({
+    where: { slug: { notIn: keepSlugs } },
+  });
+
+  console.log(
+    `✅ Upserted ${upserted} companies from data/company-seed.json` +
+      (pruned.count ? ` · pruned ${pruned.count} non-seed row(s)` : ""),
+  );
 }
 
 main()

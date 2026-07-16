@@ -369,9 +369,13 @@ const STRATEGY_FN: Record<
 };
 
 /**
- * Pluggable website fetcher — tries strategies in order.
- * Preferred strategy (last success) is tried first, then the rest.
- * Never leaves the company's own website_url origin.
+ * Pluggable website fetcher — tries strategies in fixed priority order:
+ * rss → sitemap → article_meta → content_hash (last-resort page-change only).
+ *
+ * Preferred strategy (last success) may be tried first ONLY if it is an
+ * article-producing strategy (rss/sitemap/article_meta). content_hash is
+ * never preferred — otherwise a one-time hash hit would permanently skip
+ * real multi-article feeds.
  */
 export async function fetchCompanyWebsite(
   ctx: WebsiteFetcherContext,
@@ -379,9 +383,20 @@ export async function fetchCompanyWebsite(
   const { company, preferredStrategy } = ctx;
   if (!company.websiteUrl) return null;
 
-  const order = [
-    ...(preferredStrategy ? [preferredStrategy] : []),
-    ...STRATEGY_ORDER.filter((s) => s !== preferredStrategy),
+  const articleStrategies: WebsiteStrategyName[] = [
+    "rss",
+    "sitemap",
+    "article_meta",
+  ];
+  const preferArticle =
+    preferredStrategy && articleStrategies.includes(preferredStrategy)
+      ? preferredStrategy
+      : null;
+
+  const order: WebsiteStrategyName[] = [
+    ...(preferArticle ? [preferArticle] : []),
+    ...articleStrategies.filter((s) => s !== preferArticle),
+    "content_hash",
   ];
 
   for (const name of order) {
