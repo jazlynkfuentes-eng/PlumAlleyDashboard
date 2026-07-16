@@ -4,6 +4,11 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
   try {
     const { code } = await request.json();
+    console.log('ACCESS_CODE diagnostic:', {
+      type: typeof process.env.ACCESS_CODE,
+      length: process.env.ACCESS_CODE?.length ?? 'undefined',
+      isEmpty: process.env.ACCESS_CODE === ''
+    });
     const validCode = process.env.ACCESS_CODE;
     if (!validCode) {
       return NextResponse.json({ error: 'ACCESS_CODE not configured' }, { status: 500 });
