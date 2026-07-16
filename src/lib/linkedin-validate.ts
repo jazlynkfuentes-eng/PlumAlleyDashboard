@@ -42,3 +42,38 @@ export function authorMatchesCompany(
 export function extractCompanySlugFromLinkedIn(url: string): string | null {
   return normalizeLinkedInCompanyUrl(url).match(/\/company\/([^/]+)/i)?.[1] ?? null;
 }
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Prefer Apify scraper's postedAt (date / timestamp) over n8n's published_at,
+ * which is often the workflow run time rather than the real post date.
+ */
+export function extractLinkedInPostedAt(rawSource: unknown): string | number | null {
+  if (!isRecord(rawSource)) return null;
+
+  const postedAt = rawSource.postedAt;
+  if (isRecord(postedAt)) {
+    if (typeof postedAt.date === "string" && postedAt.date.trim()) {
+      return postedAt.date.trim();
+    }
+    if (typeof postedAt.timestamp === "number" && Number.isFinite(postedAt.timestamp)) {
+      return postedAt.timestamp;
+    }
+  }
+
+  if (typeof rawSource.publishedAt === "string" && rawSource.publishedAt.trim()) {
+    return rawSource.publishedAt.trim();
+  }
+  if (typeof rawSource.timestamp === "number" && Number.isFinite(rawSource.timestamp)) {
+    return rawSource.timestamp;
+  }
+  if (typeof rawSource.postedDate === "string" && rawSource.postedDate.trim()) {
+    return rawSource.postedDate.trim();
+  }
+
+  return null;
+}
+

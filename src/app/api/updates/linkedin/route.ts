@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { ingestUpdateRow } from "@/lib/ingest-shared";
+import { extractLinkedInPostedAt } from "@/lib/linkedin-validate";
+import { prisma } from "@/lib/prisma";
 import { coercePublishedAt } from "@/lib/utils";
 
 function authorized(req: Request) {
@@ -252,21 +254,53 @@ export async function POST(req: Request) {
   }
 
   const payload = validated.data;
-  const precision = coercePublishedAt(payload.published_at)?.precision ?? "datetime";
+
+  // Prefer scraper postedAt from raw_source — n8n published_at is often the
+  // workflow clock (ingest time), which made every feed date look like "today".
+  const fromRaw = extractLinkedInPostedAt(payload.raw_source);
+  const resolved =
+    (fromRaw != null ? coercePublishedAt(fromRaw) : null) ??
+    coercePublishedAt(payload.published_at);
+
+  if (!resolved) {
+    return NextResponse.json(
+      {
+        success: false,
+        status: "error",
+        error: "published_at_invalid",
+        message: `Could not resolve a valid publish date from raw_source.postedAt or published_at ("${payload.published_at}").`,
+      },
+      { status: 400 },
+    );
+  }
 
   const result = await ingestUpdateRow({
     companyName: payload.company_name,
     sourceType: "linkedin",
     content: payload.post_content,
     sourceUrl: payload.post_url,
-    publishedAt: payload.published_at,
-    publishedAtPrecision: precision,
+    publishedAt: resolved.date.toISOString(),
+    publishedAtPrecision: resolved.precision,
     title: payload.post_content.slice(0, 80),
     excerpt: payload.post_content.slice(0, 500),
     rawSource: payload.raw_source,
     fetchStrategy: "n8n_apify_company_posts",
     onDuplicate: "skip",
   });
+
+  // Even when the post URL already exists, repair publishedAt from scraper evidence
+  // (historical rows may have stored n8n's workflow clock as the publish time).
+  if (result.ok && result.updateId) {
+    await prisma.update.update({
+      where: { id: result.updateId },
+      data: {
+        publishedAt: resolved.date,
+        publishedAtPrecision: resolved.precision,
+        dateVerifyNote: "resolved from raw_source.postedAt",
+        dateVerifiedAt: new Date(),
+      },
+    });
+  }
 
   return responseForResult(payload, result);
 }
