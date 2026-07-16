@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ExternalLink, ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { endOfLocalDay, startOfLocalDay } from "@/lib/utils";
-import { UpdateFeed } from "@/components/update-feed";
+import { CompanyFeed } from "@/components/company-feed";
 
 export const dynamic = "force-dynamic";
 
@@ -122,7 +122,7 @@ export default async function CompanyDetailPage({
 
       <section className="mt-10">
         <h2 className="font-display mb-4 text-2xl font-bold">Company Feed</h2>
-        <UpdateFeed items={updates} showCompany={false} />
+        <CompanyFeed items={updates} />
       </section>
     </div>
   );
