@@ -196,7 +196,7 @@ export async function ingestCompany(company: Company): Promise<IngestReport> {
     if (li.error) errors.push(li.error);
   }
 
-  if (company.websiteUrl) {
+  if (company.websiteUrl || company.newsFeedUrl) {
     const web: WebsiteIngestReport = await ingestCompanyWebsite(company);
     report.website = web.website;
     report.websiteStrategy = web.strategy;
@@ -238,7 +238,11 @@ export async function runDailyIngest(options?: {
 
   const companies = await prisma.company.findMany({
     where: {
-      OR: [{ linkedinUrl: { not: null } }, { websiteUrl: { not: null } }],
+      OR: [
+        { linkedinUrl: { not: null } },
+        { websiteUrl: { not: null } },
+        { newsFeedUrl: { not: null } },
+      ],
       ...(options?.companySlug ? { slug: options.companySlug } : {}),
     },
     orderBy: { name: "asc" },

@@ -29,9 +29,15 @@ export async function ingestCompanyWebsite(
     strategy: null,
   };
 
-  if (!company.websiteUrl) {
+  // Prefer homepage; if missing, run the same fetch strategies against newsFeedUrl.
+  if (!company.websiteUrl && !company.newsFeedUrl) {
     return report;
   }
+
+  const companyForFetch: Company =
+    company.websiteUrl != null
+      ? company
+      : { ...company, websiteUrl: company.newsFeedUrl };
 
   try {
     const preferredRaw = company.websiteFetchStrategy;
@@ -43,7 +49,7 @@ export async function ingestCompanyWebsite(
         ? preferredRaw
         : null;
     const result = await fetchCompanyWebsite({
-      company,
+      company: companyForFetch,
       preferredStrategy: preferred,
     });
 

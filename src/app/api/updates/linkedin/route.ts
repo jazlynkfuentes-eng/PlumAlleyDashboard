@@ -302,5 +302,13 @@ export async function POST(req: Request) {
     });
   }
 
+  // Card "Updated" uses company.lastFetchedAt — n8n LinkedIn was not setting it.
+  if (result.ok && result.inserted && "companyId" in result && result.companyId) {
+    await prisma.company.update({
+      where: { id: result.companyId },
+      data: { lastFetchedAt: new Date(), lastError: null },
+    });
+  }
+
   return responseForResult(payload, result);
 }
