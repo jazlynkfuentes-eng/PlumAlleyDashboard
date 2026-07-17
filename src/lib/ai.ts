@@ -288,11 +288,11 @@ export async function answerPortfolioQuestion(
       answer =
         "I don't have stored LinkedIn or website/news updates matching that question yet. Run the n8n LinkedIn workflow and daily website ingest, or broaden the query.";
     } else {
-      const lines = citations.slice(0, 5).map(
-        (c, i) =>
-          `${i + 1}. ${c.companyName} (${sourceLabel(c.sourceType)}): ${c.excerpt.slice(0, 140)}… — ${c.sourceUrl}`,
-      );
-      answer = `Based on stored LinkedIn and website/news updates:\n\n${lines.join("\n")}`;
+      // Offline fallback: still prefer a short synthesized blurb over a raw list.
+      const top = citations.slice(0, 4);
+      const companies = [...new Set(top.map((c) => c.companyName))];
+      const lead = top[0];
+      answer = `${companies.join(", ")} ${companies.length === 1 ? "has" : "have"} recent activity in the stored feed. The clearest signal is from ${lead.companyName}: ${lead.excerpt.slice(0, 180).trim()}${lead.excerpt.length > 180 ? "…" : ""} [1]. Other matching updates are available in the citations below — connect ANTHROPIC_API_KEY for a full synthesized briefing.`;
     }
   } else {
     const message = await client.messages.create({
@@ -302,12 +302,19 @@ export async function answerPortfolioQuestion(
         {
           role: "user",
           content: `You are an intelligence assistant for a private portfolio dashboard.
+
 Answer ONLY using the company profiles and stored updates below.
 Your sources are: (1) official LinkedIn company-page posts and (2) company website/news/blog updates stored in this dashboard.
 If the user asks what sources you use, say clearly that you draw on stored LinkedIn posts and website/news content from the portfolio companies — not the open web.
-Cite update sources using [n] notation matching the numbered list. Include source URLs in your answer.
-You may use company descriptions and tags to explain what a company does, but do not invent facts beyond the profiles and updates provided.
-If the corpus is insufficient, say so clearly.
+
+Writing style (critical):
+- Write like a knowledgeable analyst explaining what's going on in a short briefing, not like a search-results dump.
+- Use full sentences and short paragraphs (typically 1–3 paragraphs). Do NOT restate each post as its own bullet or numbered item.
+- Synthesize across sources: combine related posts into one clear point instead of summarizing them one-by-one.
+- Lead with the most important or newsworthy takeaway, then add supporting context.
+- Place citation markers like [1] or [2] inline inside the sentences they support. Do not put a bare citation list at the end instead of weaving them in.
+- Stay strictly grounded in the provided profiles and updates — never invent facts, dates, or claims. If the corpus is thin, say what you can and note what's missing.
+- Prefer plain, easy-to-understand language over jargon. You may use company descriptions/tags for context about what a company does.
 
 Question: ${question}
 

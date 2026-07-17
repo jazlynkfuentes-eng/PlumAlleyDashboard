@@ -30,7 +30,7 @@ export function ChatDrawer({
     {
       role: "assistant",
       content:
-        "Ask about any portfolio company. I answer from stored LinkedIn company-page posts only.",
+        "Ask about any portfolio company. I answer from stored LinkedIn posts and website/news updates, and I synthesize them into a short briefing with citations.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -97,7 +97,7 @@ export function ChatDrawer({
         <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
           <div>
             <h2 className="text-lg font-bold">AI Agent</h2>
-            <p className="text-sm text-[var(--grey)]">Official sources only</p>
+            <p className="text-sm text-[var(--grey)]">LinkedIn + website/news</p>
           </div>
           <button
             type="button"

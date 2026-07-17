@@ -21,7 +21,7 @@ export default function AiPage() {
     {
       role: "assistant",
       content:
-        "Ask questions like “What did Einride post this week?” or “Which companies published on LinkedIn today?” I draw only from stored LinkedIn company-page posts.",
+        "Ask questions like “What did Einride announce recently?” or “Any portfolio news this week?” I synthesize stored LinkedIn posts and website/news updates into a short analyst-style briefing.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -67,7 +67,8 @@ export default function AiPage() {
         <p className="text-sm uppercase tracking-[0.14em] text-[var(--grey)]">AI Agent</p>
         <h1 className="mt-2 text-4xl font-black tracking-tight">Conversational Q&A</h1>
         <p className="mt-2 max-w-2xl text-[var(--grey)]">
-          Answers cite official LinkedIn company-page posts stored in the dashboard.
+          Answers synthesize official LinkedIn posts and website/news updates stored in
+          the dashboard, with inline citations.
         </p>
       </header>
 
