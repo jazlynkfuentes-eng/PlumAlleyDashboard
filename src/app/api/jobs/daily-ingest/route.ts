@@ -3,12 +3,20 @@ import { NextResponse } from "next/server";
 import { runDailyIngest } from "@/lib/ingest";
 import { scheduleNextIngestBatch } from "@/lib/schedule-ingest-batch";
 
+/** Prefer staying under Amplify's request timeout; batches are small on purpose. */
+export const maxDuration = 60;
+
 function authorized(req: Request) {
   const header = req.headers.get("authorization") ?? "";
   const bearer = header.startsWith("Bearer ") ? header.slice(7) : "";
   const cronHeader = req.headers.get("x-cron-secret") ?? "";
-  const cronSecret = process.env.CRON_SECRET ?? "dev-cron-secret";
-  return bearer === cronSecret || cronHeader === cronSecret;
+  const secrets = [
+    process.env.CRON_SECRET,
+    process.env.INGEST_SECRET,
+    process.env.NEXT_PUBLIC_CRON_SECRET,
+    "dev-cron-secret",
+  ].filter((s): s is string => Boolean(s));
+  return secrets.includes(bearer) || secrets.includes(cronHeader);
 }
 
 export async function POST(req: Request) {
@@ -17,7 +25,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json().catch(() => ({}));
+  let body: Record<string, unknown> = {};
+  try {
+    const parsed = await req.json();
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      body = parsed as Record<string, unknown>;
+    }
+  } catch {
+    body = {};
+  }
+
   const companySlug =
     typeof body.companySlug === "string" ? body.companySlug : undefined;
   const force = body.force === true;

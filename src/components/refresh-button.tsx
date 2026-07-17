@@ -5,6 +5,22 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
+async function readJsonResponse(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text();
+  if (!text.trim()) {
+    throw new Error(
+      `Empty response from ingest (${res.status}). The request may have timed out — try Refresh again to resume.`,
+    );
+  }
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new Error(
+      `Non-JSON response from ingest (${res.status}): ${text.slice(0, 120)}`,
+    );
+  }
+}
+
 export function RefreshButton({
   className,
   label = "Refresh now",
@@ -24,6 +40,7 @@ export function RefreshButton({
       let body: Record<string, unknown> = { force: true, chain: false };
       let total = 0;
       let lastBatchLabel = "";
+      let runId: string | undefined;
 
       for (;;) {
         const res = await fetch("/api/jobs/daily-ingest", {
@@ -34,10 +51,15 @@ export function RefreshButton({
           },
           body: JSON.stringify(body),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Refresh failed");
+        const data = await readJsonResponse(res);
+        if (!res.ok) {
+          throw new Error(
+            typeof data.error === "string" ? data.error : "Refresh failed",
+          );
+        }
 
-        total += data.reports?.length ?? 0;
+        if (typeof data.runId === "string") runId = data.runId;
+        total += Array.isArray(data.reports) ? data.reports.length : 0;
         if (
           typeof data.batchIndex === "number" &&
           typeof data.totalBatches === "number"
@@ -57,7 +79,7 @@ export function RefreshButton({
         if (data.skipped && data.reason === "batch_not_ready") {
           await new Promise((r) => setTimeout(r, 1500));
           body = {
-            runId: data.runId,
+            runId: data.runId ?? runId,
             batchIndex: data.nextBatchIndex,
             chain: false,
           };
@@ -65,7 +87,7 @@ export function RefreshButton({
         }
 
         body = {
-          runId: data.runId,
+          runId: data.runId ?? runId,
           batchIndex: data.nextBatchIndex,
           chain: false,
         };
@@ -77,6 +99,7 @@ export function RefreshButton({
       router.refresh();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Refresh failed");
+      router.refresh();
     } finally {
       setBusy(false);
     }

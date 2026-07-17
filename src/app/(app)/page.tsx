@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import {
   endOfLocalDay,
   formatLongDay,
+  formatSystemClock,
   parseDateParam,
   startOfLocalDay,
   toDateInputValue,
@@ -103,6 +104,25 @@ try {
   // placeholders remain empty
 }
 
+  let lastRunProgress: string | null = null;
+  if (lastRun?.status === "running" && lastRun.summaryJson) {
+    try {
+      const s = JSON.parse(lastRun.summaryJson) as {
+        nextBatchIndex?: number;
+        totalBatches?: number;
+      };
+      if (
+        typeof s.nextBatchIndex === "number" &&
+        typeof s.totalBatches === "number" &&
+        s.totalBatches > 0
+      ) {
+        lastRunProgress = `batch ${Math.min(s.nextBatchIndex + 1, s.totalBatches)}/${s.totalBatches}`;
+      }
+    } catch {
+      lastRunProgress = null;
+    }
+  }
+
   const { cookies } = require('next/headers');
   const cookieStore = await cookies();
   const accessGranted = cookieStore.get('access_granted');
@@ -122,16 +142,7 @@ try {
           </h1>
           <p className="mt-2 text-[var(--grey)]">{dateLabel}</p>
           <p className="mt-1 text-sm text-[var(--grey)]">
-            System clock:{" "}
-            {new Date().toLocaleString(undefined, {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-              timeZoneName: "short",
-            })}
+            System clock: {formatSystemClock()}
           </p>
           <p className="mt-2 max-w-2xl text-[var(--grey)]">
             Official LinkedIn company-page posts and website news/blog updates —
@@ -142,14 +153,10 @@ try {
           {lastRun && (
             <p className="mt-2 text-sm text-[var(--grey)]">
               Last auto/manual refresh:{" "}
-              {lastRun.startedAt.toLocaleString(undefined, {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-              })}{" "}
-              · {lastRun.status}
+              {formatSystemClock(lastRun.startedAt)} · {lastRun.status}
+              {lastRun.status === "running" && lastRunProgress
+                ? ` (${lastRunProgress})`
+                : ""}
             </p>
           )}
         </div>

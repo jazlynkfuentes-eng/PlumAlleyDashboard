@@ -72,9 +72,24 @@ export function SettingsClient({
           },
           body: JSON.stringify(body),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Ingest failed");
-        total += data.reports?.length ?? 0;
+        const text = await res.text();
+        if (!text.trim()) {
+          throw new Error(
+            `Empty response from ingest (${res.status}). Request may have timed out — try again to resume.`,
+          );
+        }
+        let data: Record<string, unknown>;
+        try {
+          data = JSON.parse(text) as Record<string, unknown>;
+        } catch {
+          throw new Error(`Non-JSON response from ingest (${res.status})`);
+        }
+        if (!res.ok) {
+          throw new Error(
+            typeof data.error === "string" ? data.error : "Ingest failed",
+          );
+        }
+        total += Array.isArray(data.reports) ? data.reports.length : 0;
 
         if (slug || data.done === true || data.nextBatchIndex == null) break;
         if (data.skipped && data.reason === "batch_not_ready") {

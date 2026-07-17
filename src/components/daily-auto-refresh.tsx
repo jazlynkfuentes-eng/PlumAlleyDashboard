@@ -27,8 +27,19 @@ export function DailyAutoRefresh() {
 
         for (;;) {
           const res = await fetch("/api/jobs/ensure-daily", { method: "POST" });
+          const text = await res.text();
           if (!res.ok) return;
-          const data = await res.json();
+          if (!text.trim()) {
+            // Timed out / empty — retry shortly so a partial run can resume.
+            await new Promise((r) => setTimeout(r, 2000));
+            continue;
+          }
+          let data: Record<string, unknown>;
+          try {
+            data = JSON.parse(text) as Record<string, unknown>;
+          } catch {
+            return;
+          }
 
           if (data.ran) ranAny = true;
 

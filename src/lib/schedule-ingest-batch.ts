@@ -24,7 +24,12 @@ export function scheduleNextIngestBatch(
   if (result.nextBatchIndex == null) return;
 
   const url = new URL("/api/jobs/daily-ingest", req.url);
-  const secret = process.env.CRON_SECRET ?? "dev-cron-secret";
+  // Amplify injects INGEST_SECRET; CRON_SECRET may be unset at runtime.
+  const secret =
+    process.env.INGEST_SECRET ??
+    process.env.CRON_SECRET ??
+    process.env.NEXT_PUBLIC_CRON_SECRET ??
+    "dev-cron-secret";
   const { runId, nextBatchIndex } = result;
 
   after(() => {

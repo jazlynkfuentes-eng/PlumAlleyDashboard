@@ -208,7 +208,7 @@ export async function ingestCompany(company: Company): Promise<IngestReport> {
 }
 
 /** Companies per HTTP invocation — keep well under Amplify request timeout. */
-export const INGEST_BATCH_SIZE = 6;
+export const INGEST_BATCH_SIZE = 3;
 
 type BatchRecord = {
   index: number;
@@ -311,7 +311,8 @@ async function ingestCompaniesSequential(companies: Company[]): Promise<IngestRe
 
 /** Mark abandoned / timed-out runs so they are not stuck in "running" forever. */
 async function failStaleRunningRuns(opts?: { olderThanMs?: number; exceptId?: string }) {
-  const olderThanMs = opts?.olderThanMs ?? 2 * 60 * 60 * 1000;
+  // Amplify often kills mid-batch; don't leave "running" for hours.
+  const olderThanMs = opts?.olderThanMs ?? 15 * 60 * 1000;
   const cutoff = new Date(Date.now() - olderThanMs);
   const stale = await prisma.ingestRun.findMany({
     where: {
@@ -542,7 +543,7 @@ async function processIngestBatch(
       const startedMs = Date.parse(existing.startedAt);
       const ageMs = Number.isFinite(startedMs) ? Date.now() - startedMs : 0;
       // Another invocation owns this batch — unless it looks abandoned mid-request.
-      if (ageMs < 5 * 60 * 1000) {
+      if (ageMs < 90 * 1000) {
         return {
           ok: false as const,
           result: {

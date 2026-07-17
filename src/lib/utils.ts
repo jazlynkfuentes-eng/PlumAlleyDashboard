@@ -6,6 +6,35 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/** Display timezone for all user-facing dates/times on the dashboard. */
+export const DISPLAY_TIMEZONE = "America/New_York";
+
+const etDateTime: Intl.DateTimeFormatOptions = {
+  timeZone: DISPLAY_TIMEZONE,
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+};
+
+const etDateOnly: Intl.DateTimeFormatOptions = {
+  timeZone: DISPLAY_TIMEZONE,
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+};
+
+const etLongDay: Intl.DateTimeFormatOptions = {
+  timeZone: DISPLAY_TIMEZONE,
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+};
+
 export function slugify(name: string) {
   return name
     .toLowerCase()
@@ -43,13 +72,13 @@ export function endOfLocalDay(date = new Date()) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
 }
 
-/** True when the timestamp looks like a date-only midnight placeholder. */
+/** True when the timestamp looks like a date-only midnight placeholder (UTC). */
 export function looksLikeDateOnly(date: Date) {
   return (
-    date.getHours() === 0 &&
-    date.getMinutes() === 0 &&
-    date.getSeconds() === 0 &&
-    date.getMilliseconds() === 0
+    date.getUTCHours() === 0 &&
+    date.getUTCMinutes() === 0 &&
+    date.getUTCSeconds() === 0 &&
+    date.getUTCMilliseconds() === 0
   );
 }
 
@@ -62,35 +91,17 @@ export function formatFeedDate(
   if (!isValid(d)) return "—";
 
   if (precision === "unknown") {
-    return `Detected ${d.toLocaleString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    })} (time unknown)`;
+    return `Detected ${d.toLocaleString("en-US", etDateTime)} ET (time unknown)`;
   }
 
   const dateOnly =
     precision === "date" || (!precision && looksLikeDateOnly(d));
 
   if (dateOnly) {
-    return d.toLocaleDateString(undefined, {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+    return d.toLocaleDateString("en-US", etDateOnly);
   }
 
-  return d.toLocaleString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return d.toLocaleString("en-US", etDateTime);
 }
 
 export function formatRelativeShort(
@@ -101,11 +112,14 @@ export function formatRelativeShort(
 }
 
 export function formatLongDay(date = new Date()) {
-  return date.toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
+  return date.toLocaleDateString("en-US", etLongDay);
+}
+
+/** Dashboard "System clock" / last-refresh style timestamp in Eastern Time. */
+export function formatSystemClock(date = new Date()) {
+  return date.toLocaleString("en-US", {
+    ...etDateTime,
+    timeZoneName: "short",
   });
 }
 
@@ -178,18 +192,13 @@ export function getSystemClock() {
   const now = new Date();
   return {
     iso: now.toISOString(),
-    local: now.toLocaleString(undefined, {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
+    local: now.toLocaleString("en-US", {
+      ...etDateTime,
       second: "2-digit",
       timeZoneName: "short",
     }),
     dateInput: toDateInputValue(now),
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timeZone: DISPLAY_TIMEZONE,
     offsetMinutes: now.getTimezoneOffset(),
   };
 }
