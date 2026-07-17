@@ -164,7 +164,13 @@ export async function answerPortfolioQuestion(
   });
 
   const companies = await prisma.company.findMany({
-    select: { id: true, name: true, slug: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      description: true,
+      tags: true,
+    },
   });
 
   const lower = question.toLowerCase();
@@ -181,31 +187,60 @@ export async function answerPortfolioQuestion(
     .filter((w) => w.length > 3)
     .slice(0, 8);
 
-  const where: {
-    sourceType: "linkedin";
-    rawSource: { not: null };
+  type UpdateWhere = {
+    sourceType: "linkedin" | "website";
+    rawSource?: { not: null };
     companyId?: { in: string[] };
-    OR?: { excerpt?: { contains: string }; title?: { contains: string }; content?: { contains: string } }[];
-  } = { sourceType: "linkedin", rawSource: { not: null } };
+    OR?: {
+      excerpt?: { contains: string };
+      title?: { contains: string };
+      content?: { contains: string };
+    }[];
+  };
 
+  const sharedFilters: Pick<UpdateWhere, "companyId" | "OR"> = {};
   if (matchedCompanies.length > 0) {
-    where.companyId = { in: matchedCompanies.map((c) => c.id) };
+    sharedFilters.companyId = { in: matchedCompanies.map((c) => c.id) };
   }
-
   if (keywords.length > 0 && matchedCompanies.length === 0) {
-    where.OR = keywords.flatMap((k) => [
+    sharedFilters.OR = keywords.flatMap((k) => [
       { excerpt: { contains: k } },
       { title: { contains: k } },
       { content: { contains: k } },
     ]);
   }
 
-  const updates = await prisma.update.findMany({
-    where,
-    include: { company: true },
-    orderBy: { publishedAt: "desc" },
-    take: 20,
-  });
+  const corpusLimit = 20;
+  // Fetch enough of each source to build a balanced mix (LinkedIn must have scraper evidence).
+  const perSourceTake = corpusLimit;
+
+  const [linkedinUpdates, websiteUpdates] = await Promise.all([
+    prisma.update.findMany({
+      where: {
+        ...sharedFilters,
+        sourceType: "linkedin",
+        rawSource: { not: null },
+      },
+      include: { company: true },
+      orderBy: { publishedAt: "desc" },
+      take: perSourceTake,
+    }),
+    prisma.update.findMany({
+      where: {
+        ...sharedFilters,
+        sourceType: "website",
+      },
+      include: { company: true },
+      orderBy: { publishedAt: "desc" },
+      take: perSourceTake,
+    }),
+  ]);
+
+  const updates = pickMixedSourceUpdates(
+    linkedinUpdates,
+    websiteUpdates,
+    corpusLimit,
+  );
 
   const citations: Citation[] = updates.map((u) => ({
     id: u.id,
@@ -217,10 +252,31 @@ export async function answerPortfolioQuestion(
     publishedAt: u.publishedAt.toISOString(),
   }));
 
+  const companiesInContext = companies.filter(
+    (c) =>
+      matchedCompanies.some((m) => m.id === c.id) ||
+      updates.some((u) => u.companyId === c.id),
+  );
+
+  const companyProfiles =
+    companiesInContext.length > 0
+      ? companiesInContext
+          .map((c) => {
+            const tags =
+              c.tags.length > 0 ? c.tags.join(", ") : "(none listed)";
+            const desc = c.description.trim() || "(no description on file)";
+            return `- ${c.name}: ${desc}\n  Tags: ${tags}`;
+          })
+          .join("\n")
+      : "(no matched company profiles)";
+
+  const sourceLabel = (sourceType: string) =>
+    sourceType === "website" ? "Website/News" : "LinkedIn";
+
   const corpus = citations
     .map(
       (c, i) =>
-        `[${i + 1}] ${c.companyName} | LinkedIn | ${c.publishedAt.slice(0, 10)}\n${c.title ?? ""}\n${c.excerpt}\n${c.sourceUrl}`,
+        `[${i + 1}] ${c.companyName} | ${sourceLabel(c.sourceType)} | ${c.publishedAt.slice(0, 10)}\n${c.title ?? ""}\n${c.excerpt}\n${c.sourceUrl}`,
     )
     .join("\n\n");
 
@@ -230,13 +286,13 @@ export async function answerPortfolioQuestion(
   if (!client) {
     if (citations.length === 0) {
       answer =
-        "I don't have stored LinkedIn company-page posts matching that question yet. Run the n8n LinkedIn workflow or broaden the query.";
+        "I don't have stored LinkedIn or website/news updates matching that question yet. Run the n8n LinkedIn workflow and daily website ingest, or broaden the query.";
     } else {
       const lines = citations.slice(0, 5).map(
         (c, i) =>
-          `${i + 1}. ${c.companyName}: ${c.excerpt.slice(0, 140)}… — ${c.sourceUrl}`,
+          `${i + 1}. ${c.companyName} (${sourceLabel(c.sourceType)}): ${c.excerpt.slice(0, 140)}… — ${c.sourceUrl}`,
       );
-      answer = `Based on stored LinkedIn posts:\n\n${lines.join("\n")}`;
+      answer = `Based on stored LinkedIn and website/news updates:\n\n${lines.join("\n")}`;
     }
   } else {
     const message = await client.messages.create({
@@ -246,14 +302,20 @@ export async function answerPortfolioQuestion(
         {
           role: "user",
           content: `You are an intelligence assistant for a private portfolio dashboard.
-Answer ONLY using the stored official LinkedIn company-page posts below.
-Cite sources using [n] notation matching the numbered list. Include source URLs in your answer.
-If the corpus is insufficient, say so clearly. Never invent third-party news or website content.
+Answer ONLY using the company profiles and stored updates below.
+Your sources are: (1) official LinkedIn company-page posts and (2) company website/news/blog updates stored in this dashboard.
+If the user asks what sources you use, say clearly that you draw on stored LinkedIn posts and website/news content from the portfolio companies — not the open web.
+Cite update sources using [n] notation matching the numbered list. Include source URLs in your answer.
+You may use company descriptions and tags to explain what a company does, but do not invent facts beyond the profiles and updates provided.
+If the corpus is insufficient, say so clearly.
 
 Question: ${question}
 
-Corpus:
-${corpus || "(no matching LinkedIn posts)"}`,
+Company profiles:
+${companyProfiles}
+
+Updates corpus:
+${corpus || "(no matching LinkedIn or website/news updates)"}`,
         },
       ],
     });
@@ -274,4 +336,31 @@ ${corpus || "(no matching LinkedIn posts)"}`,
   });
 
   return { answer, citations, sessionId: session.id };
+}
+
+/**
+ * Build a ~limit corpus that mixes LinkedIn and website items instead of
+ * letting one source type dominate a pure publishedAt sort.
+ * Reserves up to half the slots for each source when both exist, then fills
+ * remaining slots by recency.
+ */
+function pickMixedSourceUpdates<
+  T extends { id: string; sourceType: string; publishedAt: Date },
+>(linkedin: T[], website: T[], limit: number): T[] {
+  if (linkedin.length === 0) return website.slice(0, limit);
+  if (website.length === 0) return linkedin.slice(0, limit);
+
+  const half = Math.floor(limit / 2);
+  const primaryLi = linkedin.slice(0, half);
+  const primaryWeb = website.slice(0, half);
+  const used = new Set([...primaryLi, ...primaryWeb].map((u) => u.id));
+
+  const leftovers = [...linkedin, ...website]
+    .filter((u) => !used.has(u.id))
+    .sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
+
+  const mixed = [...primaryLi, ...primaryWeb, ...leftovers].slice(0, limit);
+  return mixed.sort(
+    (a, b) => b.publishedAt.getTime() - a.publishedAt.getTime(),
+  );
 }
