@@ -58,19 +58,21 @@ export function SettingsClient({
     setBusy(true);
     setMessage(null);
     try {
-      let body: Record<string, unknown> = slug
-        ? { companySlug: slug, force: true, chain: false }
-        : { force: true, chain: false };
       let total = 0;
 
-      for (;;) {
+      if (slug) {
+        // Single-company: server also regenerates that company's AI summary.
         const res = await fetch("/api/jobs/daily-ingest", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET ?? "dev-cron-secret"}`,
           },
-          body: JSON.stringify(body),
+          body: JSON.stringify({
+            companySlug: slug,
+            force: true,
+            chain: false,
+          }),
         });
         const text = await res.text();
         if (!text.trim()) {
@@ -90,21 +92,47 @@ export function SettingsClient({
           );
         }
         total += Array.isArray(data.reports) ? data.reports.length : 0;
-
-        if (slug || data.done === true || data.nextBatchIndex == null) break;
-        if (data.skipped && data.reason === "batch_not_ready") {
-          await new Promise((r) => setTimeout(r, 1500));
+      } else {
+        // Full-portfolio: one company per request from props — never { force }
+        // alone (that starts a batched run and immediately ingests company #1).
+        const slugs = rows.map((c) => c.slug);
+        for (let i = 0; i < slugs.length; i++) {
+          const companySlug = slugs[i]!;
+          setMessage(`Ingesting ${i + 1}/${slugs.length} · ${companySlug}`);
+          const res = await fetch("/api/jobs/daily-ingest", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET ?? "dev-cron-secret"}`,
+            },
+            body: JSON.stringify({
+              companySlug,
+              force: true,
+              chain: false,
+              skipSummaryRegen: true,
+            }),
+          });
+          const text = await res.text();
+          if (!text.trim()) {
+            throw new Error(
+              `Empty response from ingest (${res.status}). Request may have timed out — try again to resume.`,
+            );
+          }
+          let data: Record<string, unknown>;
+          try {
+            data = JSON.parse(text) as Record<string, unknown>;
+          } catch {
+            throw new Error(`Non-JSON response from ingest (${res.status})`);
+          }
+          if (!res.ok) {
+            throw new Error(
+              typeof data.error === "string" ? data.error : "Ingest failed",
+            );
+          }
+          total += Array.isArray(data.reports) ? data.reports.length : 0;
         }
-        body = {
-          runId: data.runId,
-          batchIndex: data.nextBatchIndex,
-          chain: false,
-        };
-      }
 
-      // Full-portfolio path: client-driven summary regen (same as Refresh now).
-      // Single-company ingest already awaits summary regen on the server.
-      if (!slug) {
+        // Client-driven summary regen (same as Refresh now).
         let summaryOffset = 0;
         for (;;) {
           const res = await fetch("/api/jobs/regenerate-summaries", {

@@ -366,7 +366,10 @@ async function abandonRun(runId: string, reason: string) {
   });
 }
 
-async function runSingleCompanyIngest(companySlug: string): Promise<DailyIngestResult> {
+async function runSingleCompanyIngest(
+  companySlug: string,
+  options?: { skipSummaryRegen?: boolean },
+): Promise<DailyIngestResult> {
   const run = await prisma.ingestRun.create({
     data: { status: "running" },
   });
@@ -411,7 +414,9 @@ async function runSingleCompanyIngest(companySlug: string): Promise<DailyIngestR
     },
   });
 
-  if (companies.length > 0) {
+  // Client-driven full-portfolio refresh regenerates summaries in a separate
+  // HTTP loop — awaiting LLM here routinely exceeds Amplify's ~30s ceiling.
+  if (companies.length > 0 && !options?.skipSummaryRegen) {
     await regenerateCompanyIntelligenceSummaries({
       force: true,
       companyIds: companies.map((c) => c.id),
@@ -823,11 +828,14 @@ export async function runDailyIngest(options?: {
   force?: boolean;
   runId?: string;
   batchIndex?: number;
+  skipSummaryRegen?: boolean;
 }): Promise<DailyIngestResult> {
   await failStaleRunningRuns();
 
   if (options?.companySlug) {
-    return runSingleCompanyIngest(options.companySlug);
+    return runSingleCompanyIngest(options.companySlug, {
+      skipSummaryRegen: options.skipSummaryRegen === true,
+    });
   }
 
   // Explicit continuation of an in-progress batched run.

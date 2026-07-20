@@ -44,7 +44,14 @@ let keyword: string | undefined = undefined;
 try {
   companies = await prisma.company.findMany({
     orderBy: { name: "asc" },
-    select: { id: true, slug: true, name: true },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      linkedinUrl: true,
+      websiteUrl: true,
+      newsFeedUrl: true,
+    },
   });
 
   companyFilter = sp.company
@@ -130,7 +137,7 @@ try {
     return <AccessGate />;
   }
   return (
-    <div className="px-8 py-8">
+    <div className="px-8 py-8 max-w-7xl mx-auto">
       <DailyAutoRefresh />
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -160,7 +167,16 @@ try {
             </p>
           )}
         </div>
-        <RefreshButton />
+        <RefreshButton
+          companySlugs={companies
+            .filter(
+              (c) =>
+                Boolean(c.linkedinUrl) ||
+                Boolean(c.websiteUrl) ||
+                Boolean(c.newsFeedUrl),
+            )
+            .map((c) => c.slug)}
+        />
       </header>
 
       <section className="mb-10">

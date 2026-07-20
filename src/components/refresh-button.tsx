@@ -29,9 +29,12 @@ const authHeaders = {
 export function RefreshButton({
   className,
   label = "Refresh now",
+  companySlugs = [],
 }: {
   className?: string;
   label?: string;
+  /** Static portfolio slugs from the page — no live ingest call to discover the list. */
+  companySlugs?: string[];
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -41,17 +44,25 @@ export function RefreshButton({
     setBusy(true);
     setMessage(null);
     try {
-      // chain:false — this button drives batch continuation; don't also after()-trigger.
-      let body: Record<string, unknown> = { force: true, chain: false };
-      let total = 0;
-      let lastBatchLabel = "";
-      let runId: string | undefined;
+      if (companySlugs.length === 0) {
+        throw new Error("No companies available to refresh.");
+      }
 
-      for (;;) {
+      // One company per request — never kick off the batched { force } path
+      // (that starts a run and immediately ingests company #1 in the same HTTP call).
+      let total = 0;
+      for (let i = 0; i < companySlugs.length; i++) {
+        const slug = companySlugs[i]!;
+        setMessage(`Ingesting ${i + 1}/${companySlugs.length} · ${slug}`);
         const res = await fetch("/api/jobs/daily-ingest", {
           method: "POST",
           headers: authHeaders,
-          body: JSON.stringify(body),
+          body: JSON.stringify({
+            companySlug: slug,
+            force: true,
+            chain: false,
+            skipSummaryRegen: true,
+          }),
         });
         const data = await readJsonResponse(res);
         if (!res.ok) {
@@ -59,46 +70,13 @@ export function RefreshButton({
             typeof data.error === "string" ? data.error : "Refresh failed",
           );
         }
-
-        if (typeof data.runId === "string") runId = data.runId;
         total += Array.isArray(data.reports) ? data.reports.length : 0;
-        if (
-          typeof data.batchIndex === "number" &&
-          typeof data.totalBatches === "number"
-        ) {
-          lastBatchLabel = ` · batch ${data.batchIndex + 1}/${data.totalBatches}`;
-        }
-
-        if (
-          data.reason === "already_ran_today" ||
-          data.reason === "run_already_finished" ||
-          data.done === true ||
-          data.nextBatchIndex == null
-        ) {
-          break;
-        }
-
-        if (data.skipped && data.reason === "batch_not_ready") {
-          await new Promise((r) => setTimeout(r, 1500));
-          body = {
-            runId: data.runId ?? runId,
-            batchIndex: data.nextBatchIndex,
-            chain: false,
-          };
-          continue;
-        }
-
-        body = {
-          runId: data.runId ?? runId,
-          batchIndex: data.nextBatchIndex,
-          chain: false,
-        };
       }
 
       // Full-portfolio summaries must be regenerated in small HTTP batches —
       // a single after() with 33 LLM calls gets killed by request timeouts.
       setMessage(
-        `Ingest done (${total} companies${lastBatchLabel}) · regenerating AI summaries…`,
+        `Ingest done (${total} companies) · regenerating AI summaries…`,
       );
       let summaryOffset = 0;
       let summaryTotal = 0;
@@ -129,7 +107,7 @@ export function RefreshButton({
       }
 
       setMessage(
-        `Updated ${total} companies${lastBatchLabel} · ${summaryTotal} AI summaries · ${new Date().toLocaleTimeString()}`,
+        `Updated ${total} companies · ${summaryTotal} AI summaries · ${new Date().toLocaleTimeString()}`,
       );
       router.refresh();
     } catch (e) {

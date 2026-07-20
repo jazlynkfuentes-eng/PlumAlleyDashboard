@@ -51,6 +51,8 @@ export async function POST(req: Request) {
       : undefined;
   // Client-driven loops (Refresh button) pass chain:false to avoid double-trigger.
   const chain = body.chain !== false;
+  // Full-portfolio Refresh drives summary regen in a separate client loop.
+  const skipSummaryRegen = body.skipSummaryRegen === true;
 
   try {
     const result = await runDailyIngest({
@@ -58,6 +60,7 @@ export async function POST(req: Request) {
       force,
       runId,
       batchIndex,
+      skipSummaryRegen,
     });
     scheduleNextIngestBatch(req, result, { enabled: chain });
     // Server-chained paths (cron / ensure-daily) kick off summary regen after last ingest batch.
