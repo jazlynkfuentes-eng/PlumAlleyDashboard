@@ -121,7 +121,7 @@ async function fetchText(url: string, accept = "text/html,application/xml") {
         "Mozilla/5.0 (compatible; PlumAlleyPortfolioIntel/1.0; +https://plumaalley.com)",
       Accept: accept,
     },
-    signal: AbortSignal.timeout(20000),
+    signal: AbortSignal.timeout(10000),
     redirect: "follow",
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);

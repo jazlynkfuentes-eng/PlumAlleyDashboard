@@ -7,6 +7,8 @@ import { scheduleSummaryRegenAfterIngest } from "@/lib/schedule-summary-regen";
 /**
  * Prefer staying under Amplify's hard ~30s Web Compute timeout.
  * `maxDuration` is honored on Vercel; Amplify ignores/caps it at ~30s.
+ * Amplify also does not support Next.js `after()` — client-driven chaining
+ * (RefreshButton / DailyAutoRefresh) is the reliable path there.
  */
 export const maxDuration = 30;
 

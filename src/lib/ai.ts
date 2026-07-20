@@ -695,8 +695,8 @@ Rules:
   return { generated: true, id: record.id };
 }
 
-/** Companies per summary-regen HTTP request — keep under Amplify timeout. */
-export const SUMMARY_REGEN_BATCH_SIZE = 2;
+/** Companies per summary-regen HTTP request — keep under Amplify's ~30s ceiling. */
+export const SUMMARY_REGEN_BATCH_SIZE = 1;
 
 export type SummaryRegenBatchResult = {
   done: boolean;

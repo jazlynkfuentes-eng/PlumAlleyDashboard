@@ -8,7 +8,8 @@ import { scheduleNextSummaryBatch } from "@/lib/schedule-summary-regen";
 
 /**
  * Amplify Web Compute hard-caps SSR/API at ~30s; `maxDuration` is explicit
- * for platforms that honor it (e.g. Vercel).
+ * for platforms that honor it (e.g. Vercel). Amplify does not support
+ * Next.js `after()`, so client-driven chaining is the reliable path there.
  */
 export const maxDuration = 30;
 

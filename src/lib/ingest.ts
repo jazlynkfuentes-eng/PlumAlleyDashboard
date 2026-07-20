@@ -211,7 +211,7 @@ export async function ingestCompany(company: Company): Promise<IngestReport> {
  * Companies per HTTP invocation.
  * AWS Amplify Hosting Web Compute has a hard ~30s SSR/API timeout that cannot
  * be raised via Next.js `maxDuration`. Batch size 1 keeps website fetches
- * (AbortSignal ~20s) safely under that ceiling.
+ * (AbortSignal ~10s) safely under that ceiling.
  */
 export const INGEST_BATCH_SIZE = 1;
 
