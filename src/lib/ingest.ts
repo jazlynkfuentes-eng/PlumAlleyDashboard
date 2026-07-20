@@ -1,7 +1,8 @@
 import { ApifyClient } from "apify-client";
 import { createHash } from "crypto";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { generateCompanySummary } from "@/lib/ai";
+import { generateCompanySummary, regenerateCompanyIntelligenceSummaries } from "@/lib/ai";
 import { coercePublishedAt, startOfLocalDay } from "@/lib/utils";
 import { ingestUpdateRow } from "@/lib/ingest-shared";
 import {
@@ -233,6 +234,8 @@ type BatchedIngestSummary = {
   batches: BatchRecord[];
   count: number;
   failureCount: number;
+  /** When true, intelligence summaries regenerate even if already generated today. */
+  forceRegenerateSummaries?: boolean;
 };
 
 export type DailyIngestResult = {
@@ -382,6 +385,7 @@ async function runSingleCompanyIngest(companySlug: string): Promise<DailyIngestR
         totalCompanies: reports.length,
         totalBatches: 1,
         nextBatchIndex: 1,
+        forceRegenerateSummaries: true,
         companySlugs: companies.map((c) => c.slug),
         reports,
         failures,
@@ -400,6 +404,13 @@ async function runSingleCompanyIngest(companySlug: string): Promise<DailyIngestR
       }),
     },
   });
+
+  if (companies.length > 0) {
+    await regenerateCompanyIntelligenceSummaries({
+      force: true,
+      companyIds: companies.map((c) => c.id),
+    });
+  }
 
   return {
     runId: run.id,
@@ -708,7 +719,7 @@ async function processIngestBatch(
     };
   });
 
-  return {
+  const result: DailyIngestResult = {
     runId,
     reports,
     failures: batchFailures,
@@ -719,9 +730,26 @@ async function processIngestBatch(
     nextBatchIndex: finalized.nextBatchIndex,
     status: finalized.status,
   };
+
+  if (finalized.done) {
+    const run = await prisma.ingestRun.findUnique({ where: { id: runId } });
+    const summary = parseBatchedSummary(run?.summaryJson ?? "");
+    const forceRegen = summary?.forceRegenerateSummaries === true;
+    after(async () => {
+      try {
+        await regenerateCompanyIntelligenceSummaries({ force: forceRegen });
+      } catch (e) {
+        console.error("[intelligence-summary] batch regen failed", e);
+      }
+    });
+  }
+
+  return result;
 }
 
-async function startBatchedIngestRun(): Promise<DailyIngestResult> {
+async function startBatchedIngestRun(options?: {
+  force?: boolean;
+}): Promise<DailyIngestResult> {
   const companies = await prisma.company.findMany({
     where: companyIngestWhere(),
     orderBy: { name: "asc" },
@@ -736,6 +764,7 @@ async function startBatchedIngestRun(): Promise<DailyIngestResult> {
     totalBatches: companySlugs.length === 0 ? 0 : totalBatches,
     nextBatchIndex: 0,
     companySlugs,
+    forceRegenerateSummaries: options?.force === true,
   });
 
   // Empty portfolio: complete immediately.
@@ -832,7 +861,7 @@ export async function runDailyIngest(options?: {
     await abandonRun(todayRun.id, "superseded_by_force");
   }
 
-  return startBatchedIngestRun();
+  return startBatchedIngestRun({ force: options?.force });
 }
 
 export async function ensureDailyIngest() {

@@ -4,8 +4,37 @@ import { ExternalLink, ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { endOfLocalDay, startOfLocalDay } from "@/lib/utils";
 import { CompanyFeed } from "@/components/company-feed";
+import {
+  CompanyIntelligenceSummary,
+  type IntelligenceSource,
+} from "@/components/company-intelligence-summary";
+import type { IntelligenceSections } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
+
+function parseJsonArray(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseSections(raw: string): IntelligenceSections {
+  try {
+    const parsed = JSON.parse(raw) as IntelligenceSections;
+    return {
+      happening: typeof parsed.happening === "string" ? parsed.happening : undefined,
+      mattersBecause:
+        typeof parsed.mattersBecause === "string" ? parsed.mattersBecause : undefined,
+      comparedToPeers:
+        typeof parsed.comparedToPeers === "string" ? parsed.comparedToPeers : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
 
 export default async function CompanyDetailPage({
   params,
@@ -19,7 +48,7 @@ export default async function CompanyDetailPage({
   const from = startOfLocalDay();
   const to = endOfLocalDay();
 
-  const [updates, summary] = await Promise.all([
+  const [updates, intelligenceSummary] = await Promise.all([
     prisma.update.findMany({
       where: {
         companyId: company.id,
@@ -34,17 +63,49 @@ export default async function CompanyDetailPage({
       orderBy: { publishedAt: "desc" },
       take: 50,
     }),
-    company.linkedinUrl
-      ? prisma.dailySummary.findUnique({
-          where: {
-            companyId_summaryDate: {
-              companyId: company.id,
-              summaryDate: from,
-            },
-          },
-        })
-      : Promise.resolve(null),
+    prisma.companyIntelligenceSummary.findUnique({
+      where: { companyId: company.id },
+    }),
   ]);
+
+  const citedIds = intelligenceSummary
+    ? parseJsonArray(intelligenceSummary.citedUpdateIds)
+    : [];
+  let peerUpdateIds: string[] = [];
+  if (intelligenceSummary?.peerContextJson) {
+    try {
+      const peerContext = JSON.parse(intelligenceSummary.peerContextJson) as {
+        peerUpdateIds?: unknown;
+      };
+      if (Array.isArray(peerContext.peerUpdateIds)) {
+        peerUpdateIds = peerContext.peerUpdateIds.filter(
+          (id): id is string => typeof id === "string",
+        );
+      }
+    } catch {
+      peerUpdateIds = [];
+    }
+  }
+  const allSourceIds = [...new Set([...citedIds, ...peerUpdateIds])];
+
+  const citedUpdates =
+    allSourceIds.length > 0
+      ? await prisma.update.findMany({
+          where: { id: { in: allSourceIds } },
+          include: { company: { select: { name: true } } },
+          orderBy: { publishedAt: "desc" },
+        })
+      : [];
+
+  const sources: IntelligenceSource[] = citedUpdates.map((u) => ({
+    id: u.id,
+    sourceType: u.sourceType as "linkedin" | "website",
+    sourceUrl: u.sourceUrl,
+    title: u.title,
+    excerpt: u.excerpt,
+    publishedAt: u.publishedAt,
+    companyName: u.company.name,
+  }));
 
   const todayCount = updates.filter((u) => {
     const t = u.publishedAt.getTime();
@@ -105,20 +166,22 @@ export default async function CompanyDetailPage({
         )}
       </header>
 
-      {company.linkedinUrl && (
-        <section className="mt-8">
-          <h2 className="font-display text-2xl font-bold">Today&apos;s AI Summary</h2>
-          {summary ? (
-            <p className="mt-3 max-w-3xl rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-secondary)] px-5 py-4 leading-relaxed shadow-[var(--shadow-sm)]">
-              {summary.content}
-            </p>
-          ) : (
-            <p className="mt-3 text-[var(--grey)]">
-              No summary for today yet. Summaries appear after LinkedIn posts are ingested.
-            </p>
-          )}
-        </section>
-      )}
+      <section className="mt-8">
+        <h2 className="font-display text-2xl font-bold">Intelligence Summary</h2>
+        <div className="mt-3">
+          <CompanyIntelligenceSummary
+            sections={
+              intelligenceSummary
+                ? parseSections(intelligenceSummary.sectionsJson)
+                : {}
+            }
+            windowDays={intelligenceSummary?.windowDays ?? 30}
+            sourceCount={citedIds.length}
+            generatedAt={intelligenceSummary?.generatedAt ?? new Date()}
+            sources={sources}
+          />
+        </div>
+      </section>
 
       <section className="mt-10">
         <h2 className="font-display mb-4 text-2xl font-bold">Company Feed</h2>

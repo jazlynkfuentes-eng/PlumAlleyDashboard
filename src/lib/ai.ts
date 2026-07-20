@@ -2,8 +2,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { endOfLocalDay, startOfLocalDay } from "@/lib/utils";
 
+/** Current Claude Sonnet — see https://docs.anthropic.com/en/docs/about-claude/models/overview */
+const ANTHROPIC_MODEL = "claude-sonnet-5";
+
 function getClient() {
-  const key = process.env.ANTHROPIC_API_KEY;
+  const key = process.env.ANTHROPIC_API_KEY?.trim();
   if (!key) return null;
   return new Anthropic({ apiKey: key });
 }
@@ -122,7 +125,7 @@ async function summarizeTexts(
   }
 
   const message = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: ANTHROPIC_MODEL,
     max_tokens: 400,
     messages: [
       {
@@ -296,7 +299,7 @@ export async function answerPortfolioQuestion(
     }
   } else {
     const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: ANTHROPIC_MODEL,
       max_tokens: 800,
       messages: [
         {
@@ -370,4 +373,349 @@ function pickMixedSourceUpdates<
   return mixed.sort(
     (a, b) => b.publishedAt.getTime() - a.publishedAt.getTime(),
   );
+}
+
+export const DEFAULT_INTELLIGENCE_WINDOW_DAYS = 30;
+
+export type IntelligenceSections = {
+  happening?: string;
+  mattersBecause?: string;
+  comparedToPeers?: string;
+};
+
+export type IntelligencePeerContext = {
+  peerCompanyIds?: string[];
+  peerUpdateIds?: string[];
+  peersOmittedReason?: string;
+};
+
+type IntelligenceUpdate = {
+  id: string;
+  companyId: string;
+  sourceType: string;
+  sourceUrl: string;
+  title: string | null;
+  excerpt: string;
+  content: string;
+  publishedAt: Date;
+};
+
+function windowStart(windowDays: number) {
+  const from = new Date();
+  from.setDate(from.getDate() - windowDays);
+  from.setHours(0, 0, 0, 0);
+  return from;
+}
+
+function updateWindowWhere(companyId: string, from: Date) {
+  return {
+    companyId,
+    publishedAt: { gte: from },
+    OR: [
+      { sourceType: "linkedin" as const, rawSource: { not: null } },
+      { sourceType: "website" as const },
+    ],
+  };
+}
+
+async function fetchCompanyUpdatesInWindow(
+  companyId: string,
+  windowDays: number,
+  take = 24,
+): Promise<IntelligenceUpdate[]> {
+  const from = windowStart(windowDays);
+  return prisma.update.findMany({
+    where: updateWindowWhere(companyId, from),
+    orderBy: { publishedAt: "desc" },
+    take,
+  });
+}
+
+async function selectPeerCompanies(
+  company: { id: string; sector: string },
+  windowDays: number,
+): Promise<{ peers: { id: string; name: string }[]; peerUpdates: IntelligenceUpdate[] }> {
+  const from = windowStart(windowDays);
+  const candidates = await prisma.company.findMany({
+    where: {
+      sector: company.sector,
+      id: { not: company.id },
+    },
+    select: { id: true, name: true },
+  });
+
+  if (candidates.length === 0) {
+    return { peers: [], peerUpdates: [] };
+  }
+
+  const counts = await Promise.all(
+    candidates.map(async (peer) => {
+      const count = await prisma.update.count({
+        where: updateWindowWhere(peer.id, from),
+      });
+      return { peer, count };
+    }),
+  );
+
+  const qualified = counts
+    .filter((c) => c.count >= 2)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 2)
+    .map((c) => c.peer);
+
+  if (qualified.length === 0) {
+    return { peers: [], peerUpdates: [] };
+  }
+
+  const peerUpdates = await prisma.update.findMany({
+    where: {
+      companyId: { in: qualified.map((p) => p.id) },
+      publishedAt: { gte: from },
+      OR: [
+        { sourceType: "linkedin", rawSource: { not: null } },
+        { sourceType: "website" },
+      ],
+    },
+    orderBy: { publishedAt: "desc" },
+    take: 12,
+  });
+
+  return { peers: qualified, peerUpdates };
+}
+
+function sourceLabel(sourceType: string) {
+  return sourceType === "website" ? "Website/News" : "LinkedIn";
+}
+
+function formatCorpus(
+  updates: IntelligenceUpdate[],
+  companyNames: Map<string, string>,
+) {
+  return updates
+    .map((u, i) => {
+      const name = companyNames.get(u.companyId) ?? "Company";
+      return `[${i + 1}] ${name} | ${sourceLabel(u.sourceType)} | ${u.publishedAt.toISOString().slice(0, 10)}\n${u.title ?? ""}\n${u.excerpt || u.content}\n${u.sourceUrl}`;
+    })
+    .join("\n\n");
+}
+
+function renderIntelligenceContent(sections: IntelligenceSections): string {
+  const parts: string[] = [];
+  if (sections.happening?.trim()) {
+    parts.push(`Here's what's been happening...\n\n${sections.happening.trim()}`);
+  }
+  if (sections.mattersBecause?.trim()) {
+    parts.push(`This matters because...\n\n${sections.mattersBecause.trim()}`);
+  }
+  if (sections.comparedToPeers?.trim()) {
+    parts.push(`Compared to peers...\n\n${sections.comparedToPeers.trim()}`);
+  }
+  return parts.join("\n\n");
+}
+
+function parseIntelligenceSections(raw: string): IntelligenceSections {
+  try {
+    const parsed = JSON.parse(raw) as Partial<IntelligenceSections>;
+    return {
+      happening: typeof parsed.happening === "string" ? parsed.happening : undefined,
+      mattersBecause:
+        typeof parsed.mattersBecause === "string" ? parsed.mattersBecause : undefined,
+      comparedToPeers:
+        typeof parsed.comparedToPeers === "string" ? parsed.comparedToPeers : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+function offlineIntelligenceSections(
+  companyName: string,
+  updates: IntelligenceUpdate[],
+  peers: { id: string; name: string }[],
+  peerUpdates: IntelligenceUpdate[],
+): IntelligenceSections {
+  if (updates.length === 0) {
+    return {
+      happening:
+        "No significant public activity was detected in the stored LinkedIn and website/news feed for this window.",
+    };
+  }
+
+  const linkedin = updates.filter((u) => u.sourceType === "linkedin").length;
+  const website = updates.filter((u) => u.sourceType === "website").length;
+  const lead = updates[0];
+  const happening = `${companyName} has ${updates.length} stored update${updates.length === 1 ? "" : "s"} in this window (${linkedin} LinkedIn, ${website} website/news). The most recent signal: ${lead.excerpt.slice(0, 280).trim()}${lead.excerpt.length > 280 ? "…" : ""}`;
+
+  const sections: IntelligenceSections = { happening };
+
+  if (peers.length > 0 && peerUpdates.length >= 2) {
+    const peerNames = peers.map((p) => p.name).join(" and ");
+    sections.comparedToPeers = `Peer context from ${peerNames} (${peerUpdates.length} updates in the same sector/window) is available for comparison once ANTHROPIC_API_KEY is configured for full synthesis.`;
+  }
+
+  return sections;
+}
+
+export async function generateCompanyIntelligenceSummary(
+  companyId: string,
+  options?: { force?: boolean; windowDays?: number },
+): Promise<{ skipped: boolean; reason?: string } | { generated: true; id: string }> {
+  const windowDays = options?.windowDays ?? DEFAULT_INTELLIGENCE_WINDOW_DAYS;
+  const force = options?.force === true;
+
+  const company = await prisma.company.findUnique({ where: { id: companyId } });
+  if (!company) return { skipped: true, reason: "company_not_found" };
+
+  if (!force) {
+    const existing = await prisma.companyIntelligenceSummary.findUnique({
+      where: { companyId },
+    });
+    if (existing && existing.generatedAt >= startOfLocalDay()) {
+      return { skipped: true, reason: "already_generated_today" };
+    }
+  }
+
+  const updates = await fetchCompanyUpdatesInWindow(companyId, windowDays);
+  const { peers, peerUpdates } = await selectPeerCompanies(company, windowDays);
+
+  const companyNames = new Map<string, string>([[company.id, company.name]]);
+  for (const peer of peers) companyNames.set(peer.id, peer.name);
+
+  const targetCorpus = formatCorpus(updates, companyNames);
+  const peerCorpus =
+    peerUpdates.length > 0 ? formatCorpus(peerUpdates, companyNames) : "";
+
+  const client = getClient();
+  let sections: IntelligenceSections;
+
+  if (!client) {
+    sections = offlineIntelligenceSections(company.name, updates, peers, peerUpdates);
+  } else {
+    const peerBlock =
+      peers.length > 0 && peerUpdates.length >= 2
+        ? `\n\nPeer companies (same sector: ${company.sector}):\n${peers.map((p) => `- ${p.name}`).join("\n")}\n\nPeer updates corpus:\n${peerCorpus}`
+        : "\n\n(No sufficient peer activity in this window — omit section 3 entirely.)";
+
+    try {
+      const message = await client.messages.create({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 1200,
+        messages: [
+          {
+            role: "user",
+            content: `You are writing a company intelligence briefing for a private portfolio dashboard.
+
+Company: ${company.name}
+Sector: ${company.sector}
+Window: last ${windowDays} days
+
+Use ONLY the updates below. Do not invent facts, funding rounds, hires, or events not supported by the text.
+
+Target company updates:
+${targetCorpus || "(no updates in window)"}
+${peerBlock}
+
+Return ONLY valid JSON (no markdown fences) with up to three optional string fields:
+
+- "happening": factual synthesis of recent activity (LinkedIn + website/news). Write as much as the data supports — omit if there is no real activity.
+
+- "mattersBecause": investor-relevant analysis of WHY the specific facts in "happening" matter — NOT a restatement of section 1.
+  Requirements:
+  • Name the SPECIFIC thing(s) from the posts (product name, partnership, funding, hire, event, launch, conference, customer win, etc.) — never vague labels like "activity", "communications", or "updates".
+  • Explain WHY that specific thing matters using reasoning tied to that fact. Examples of the kind of analysis expected:
+    - Product unveiling/launch: what capability does it add; is this a first-time announcement or an incremental update?
+    - Event/conference: marketing presence only, or a signal about sales motion, customer base, or competitive positioning?
+    - Partnership: who is the partner and what does it signal about validation or market expansion?
+    - Hire/team change: what does the role suggest about priorities (e.g., first sales hire → scaling go-to-market)?
+  • Build on facts already established in "happening" — do not introduce new claims not in the corpus.
+  • Do NOT paraphrase or lightly reword the raw post text as your analysis. Section 2 must add interpretive value beyond section 1.
+  • FORBIDDEN filler (never use these or close variants): "ongoing activity", "worth monitoring", "official communications suggest", "go-to-market or product narrative activity", "portfolio milestones", "signals continued momentum", "remains active in the market".
+  • If you cannot identify something specific and analytically meaningful to say about WHY it matters, omit "mattersBecause" entirely — do not pad with generic corporate-speak.
+
+- "comparedToPeers": comparative note using peer updates only when peer corpus exists — omit if peers are absent or thin.
+
+Rules:
+- Omit any section key entirely when there is not enough evidence (do not pad or speculate).
+- Use plain analyst prose inside each field (no bullet lists unless the source material demands it).
+- Do not include section titles inside the JSON values.
+- "happening" = what happened (facts). "mattersBecause" = why those facts matter to an investor (analysis). Keep them distinct.`,
+          },
+        ],
+      });
+
+      const block = message.content.find((b) => b.type === "text");
+      const text = block && block.type === "text" ? block.text.trim() : "{}";
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      sections = parseIntelligenceSections(jsonMatch?.[0] ?? text);
+    } catch (err) {
+      console.error(
+        `[intelligence-summary] Anthropic API failed for ${company.name}:`,
+        err instanceof Error ? err.message : err,
+      );
+      throw err;
+    }
+  }
+
+  const citedUpdateIds = updates.map((u) => u.id);
+  const peerContext: IntelligencePeerContext =
+    peers.length > 0 && peerUpdates.length >= 2
+      ? {
+          peerCompanyIds: peers.map((p) => p.id),
+          peerUpdateIds: peerUpdates.map((u) => u.id),
+        }
+      : {
+          peersOmittedReason:
+            peers.length === 0
+              ? "no_same_sector_peers"
+              : "insufficient_peer_activity",
+        };
+
+  const content = renderIntelligenceContent(sections);
+  const record = await prisma.companyIntelligenceSummary.upsert({
+    where: { companyId },
+    create: {
+      companyId,
+      windowDays,
+      content,
+      sectionsJson: JSON.stringify(sections),
+      citedUpdateIds: JSON.stringify(citedUpdateIds),
+      peerContextJson: JSON.stringify(peerContext),
+      generatedAt: new Date(),
+    },
+    update: {
+      windowDays,
+      content,
+      sectionsJson: JSON.stringify(sections),
+      citedUpdateIds: JSON.stringify(citedUpdateIds),
+      peerContextJson: JSON.stringify(peerContext),
+      generatedAt: new Date(),
+    },
+  });
+
+  return { generated: true, id: record.id };
+}
+
+/** Regenerate intelligence summaries after ingest (once per day unless force). */
+export async function regenerateCompanyIntelligenceSummaries(options?: {
+  force?: boolean;
+  companyIds?: string[];
+}) {
+  const force = options?.force === true;
+  const companies = options?.companyIds?.length
+    ? await prisma.company.findMany({
+        where: { id: { in: options.companyIds } },
+        select: { id: true },
+      })
+    : await prisma.company.findMany({ select: { id: true } });
+
+  for (const { id } of companies) {
+    try {
+      await generateCompanyIntelligenceSummary(id, { force });
+    } catch (e) {
+      console.error(
+        `[intelligence-summary] failed for ${id}:`,
+        e instanceof Error ? e.message : e,
+      );
+    }
+  }
 }

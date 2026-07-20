@@ -38,6 +38,22 @@ model Company {
   updatedAt            DateTime       @updatedAt
   updates              Update[]
   summaries            DailySummary[]
+  intelligenceSummary  CompanyIntelligenceSummary?
+}
+
+model CompanyIntelligenceSummary {
+  id              String   @id @default(cuid())
+  companyId       String   @unique
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  windowDays      Int      @default(30)
+  content         String
+  /// { happening?, mattersBecause?, comparedToPeers? }
+  sectionsJson    String   @default("{}")
+  citedUpdateIds  String   @default("[]")
+  /// { peerCompanyIds?, peerUpdateIds?, peersOmittedReason? }
+  peerContextJson String   @default("{}")
+  generatedAt     DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model Update {
