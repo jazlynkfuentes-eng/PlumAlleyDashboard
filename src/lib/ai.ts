@@ -695,20 +695,51 @@ Rules:
   return { generated: true, id: record.id };
 }
 
-/** Regenerate intelligence summaries after ingest (once per day unless force). */
-export async function regenerateCompanyIntelligenceSummaries(options?: {
+/** Companies per summary-regen HTTP request — keep under Amplify timeout. */
+export const SUMMARY_REGEN_BATCH_SIZE = 2;
+
+export type SummaryRegenBatchResult = {
+  done: boolean;
+  nextOffset: number | null;
+  processed: number;
+  total: number;
+  force: boolean;
+};
+
+/**
+ * Regenerate a slice of company intelligence summaries.
+ * Used by /api/jobs/regenerate-summaries so full-portfolio regen stays
+ * within request timeouts (unlike regenerating all 33 in one after()).
+ */
+export async function regenerateCompanyIntelligenceSummariesBatch(options?: {
   force?: boolean;
+  offset?: number;
+  limit?: number;
   companyIds?: string[];
-}) {
+}): Promise<SummaryRegenBatchResult> {
   const force = options?.force === true;
+  const offset = Math.max(0, options?.offset ?? 0);
+  const limit = Math.max(1, options?.limit ?? SUMMARY_REGEN_BATCH_SIZE);
+
   const companies = options?.companyIds?.length
     ? await prisma.company.findMany({
         where: { id: { in: options.companyIds } },
         select: { id: true },
+        orderBy: { name: "asc" },
       })
-    : await prisma.company.findMany({ select: { id: true } });
+    : await prisma.company.findMany({
+        select: { id: true },
+        orderBy: { name: "asc" },
+      });
 
-  for (const { id } of companies) {
+  const total = companies.length;
+  const slice = companies.slice(offset, offset + limit);
+
+  console.log(
+    `[intelligence-summary] regen batch offset=${offset} size=${slice.length}/${total} force=${force}`,
+  );
+
+  for (const { id } of slice) {
     try {
       await generateCompanyIntelligenceSummary(id, { force });
     } catch (e) {
@@ -717,5 +748,33 @@ export async function regenerateCompanyIntelligenceSummaries(options?: {
         e instanceof Error ? e.message : e,
       );
     }
+  }
+
+  const nextOffset = offset + slice.length;
+  const done = nextOffset >= total;
+  return {
+    done,
+    nextOffset: done ? null : nextOffset,
+    processed: slice.length,
+    total,
+    force,
+  };
+}
+
+/** Regenerate all (or selected) summaries — fine for 1 company; prefer batch for full portfolio. */
+export async function regenerateCompanyIntelligenceSummaries(options?: {
+  force?: boolean;
+  companyIds?: string[];
+}) {
+  const force = options?.force === true;
+  let offset = 0;
+  for (;;) {
+    const batch = await regenerateCompanyIntelligenceSummariesBatch({
+      force,
+      offset,
+      companyIds: options?.companyIds,
+    });
+    if (batch.done || batch.nextOffset == null) break;
+    offset = batch.nextOffset;
   }
 }

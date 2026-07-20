@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { ensureDailyIngest } from "@/lib/ingest";
 import { scheduleNextIngestBatch } from "@/lib/schedule-ingest-batch";
+import { scheduleSummaryRegenAfterIngest } from "@/lib/schedule-summary-regen";
 
 /**
  * Once-per-day automatic refresh triggered when the owner opens the app.
@@ -12,6 +13,12 @@ export async function POST(req: Request) {
   try {
     const result = await ensureDailyIngest();
     scheduleNextIngestBatch(req, result);
+    if (result.done && result.summaryRegen) {
+      scheduleSummaryRegenAfterIngest(req, {
+        force: result.summaryRegen.force,
+        enabled: true,
+      });
+    }
     return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json(

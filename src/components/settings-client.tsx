@@ -102,6 +102,42 @@ export function SettingsClient({
         };
       }
 
+      // Full-portfolio path: client-driven summary regen (same as Refresh now).
+      // Single-company ingest already awaits summary regen on the server.
+      if (!slug) {
+        let summaryOffset = 0;
+        for (;;) {
+          const res = await fetch("/api/jobs/regenerate-summaries", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET ?? "dev-cron-secret"}`,
+            },
+            body: JSON.stringify({
+              force: true,
+              offset: summaryOffset,
+              chain: false,
+            }),
+          });
+          const text = await res.text();
+          if (!text.trim()) {
+            throw new Error(
+              `Empty response from summary regen (${res.status}). Try again to resume.`,
+            );
+          }
+          const data = JSON.parse(text) as Record<string, unknown>;
+          if (!res.ok) {
+            throw new Error(
+              typeof data.error === "string"
+                ? data.error
+                : "Summary regeneration failed",
+            );
+          }
+          if (data.done === true || data.nextOffset == null) break;
+          summaryOffset = data.nextOffset as number;
+        }
+      }
+
       setMessage(
         `Ingest ran for ${total} compan${total === 1 ? "y" : "ies"}. Prefer the n8n workflow for production LinkedIn pulls.`,
       );

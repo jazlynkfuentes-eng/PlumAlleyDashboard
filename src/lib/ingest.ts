@@ -1,6 +1,5 @@
 import { ApifyClient } from "apify-client";
 import { createHash } from "crypto";
-import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateCompanySummary, regenerateCompanyIntelligenceSummaries } from "@/lib/ai";
 import { coercePublishedAt, startOfLocalDay } from "@/lib/utils";
@@ -249,6 +248,8 @@ export type DailyIngestResult = {
   totalBatches: number | null;
   nextBatchIndex: number | null;
   status: string;
+  /** When set, caller should kick off (or continue) intelligence summary regen. */
+  summaryRegen?: { force: boolean } | null;
 };
 
 function emptySummary(partial?: Partial<BatchedIngestSummary>): BatchedIngestSummary {
@@ -729,19 +730,17 @@ async function processIngestBatch(
     totalBatches: finalized.totalBatches,
     nextBatchIndex: finalized.nextBatchIndex,
     status: finalized.status,
+    summaryRegen: null,
   };
 
   if (finalized.done) {
     const run = await prisma.ingestRun.findUnique({ where: { id: runId } });
     const summary = parseBatchedSummary(run?.summaryJson ?? "");
     const forceRegen = summary?.forceRegenerateSummaries === true;
-    after(async () => {
-      try {
-        await regenerateCompanyIntelligenceSummaries({ force: forceRegen });
-      } catch (e) {
-        console.error("[intelligence-summary] batch regen failed", e);
-      }
-    });
+    result.summaryRegen = { force: forceRegen };
+    console.log(
+      `[ingest] run ${runId} completed · scheduling intelligence summaries (force=${forceRegen})`,
+    );
   }
 
   return result;

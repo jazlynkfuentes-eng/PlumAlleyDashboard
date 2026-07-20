@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { runDailyIngest } from "@/lib/ingest";
 import { scheduleNextIngestBatch } from "@/lib/schedule-ingest-batch";
+import { scheduleSummaryRegenAfterIngest } from "@/lib/schedule-summary-regen";
 
 /** Prefer staying under Amplify's request timeout; batches are small on purpose. */
 export const maxDuration = 60;
@@ -54,6 +55,14 @@ export async function POST(req: Request) {
       batchIndex,
     });
     scheduleNextIngestBatch(req, result, { enabled: chain });
+    // Server-chained paths (cron / ensure-daily) kick off summary regen after last ingest batch.
+    // Refresh button passes chain:false and drives summary regen itself.
+    if (result.done && result.summaryRegen) {
+      scheduleSummaryRegenAfterIngest(req, {
+        force: result.summaryRegen.force,
+        enabled: chain,
+      });
+    }
     return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json(
@@ -72,6 +81,12 @@ export async function GET(req: Request) {
   try {
     const result = await runDailyIngest({ force: true });
     scheduleNextIngestBatch(req, result);
+    if (result.done && result.summaryRegen) {
+      scheduleSummaryRegenAfterIngest(req, {
+        force: result.summaryRegen.force,
+        enabled: true,
+      });
+    }
     return NextResponse.json(result);
   } catch (e) {
     return NextResponse.json(

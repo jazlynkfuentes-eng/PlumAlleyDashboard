@@ -21,6 +21,11 @@ async function readJsonResponse(res: Response): Promise<Record<string, unknown>>
   }
 }
 
+const authHeaders = {
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET ?? "dev-cron-secret"}`,
+};
+
 export function RefreshButton({
   className,
   label = "Refresh now",
@@ -45,10 +50,7 @@ export function RefreshButton({
       for (;;) {
         const res = await fetch("/api/jobs/daily-ingest", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET ?? "dev-cron-secret"}`,
-          },
+          headers: authHeaders,
           body: JSON.stringify(body),
         });
         const data = await readJsonResponse(res);
@@ -93,8 +95,41 @@ export function RefreshButton({
         };
       }
 
+      // Full-portfolio summaries must be regenerated in small HTTP batches —
+      // a single after() with 33 LLM calls gets killed by request timeouts.
       setMessage(
-        `Updated ${total} companies${lastBatchLabel} · ${new Date().toLocaleTimeString()}`,
+        `Ingest done (${total} companies${lastBatchLabel}) · regenerating AI summaries…`,
+      );
+      let summaryOffset = 0;
+      let summaryTotal = 0;
+      for (;;) {
+        const res = await fetch("/api/jobs/regenerate-summaries", {
+          method: "POST",
+          headers: authHeaders,
+          body: JSON.stringify({
+            force: true,
+            offset: summaryOffset,
+            chain: false,
+          }),
+        });
+        const data = await readJsonResponse(res);
+        if (!res.ok) {
+          throw new Error(
+            typeof data.error === "string"
+              ? data.error
+              : "Summary regeneration failed",
+          );
+        }
+        if (typeof data.total === "number") summaryTotal = data.total;
+        if (data.done === true || data.nextOffset == null) break;
+        summaryOffset = data.nextOffset as number;
+        setMessage(
+          `Regenerating AI summaries · ${summaryOffset}/${summaryTotal}`,
+        );
+      }
+
+      setMessage(
+        `Updated ${total} companies${lastBatchLabel} · ${summaryTotal} AI summaries · ${new Date().toLocaleTimeString()}`,
       );
       router.refresh();
     } catch (e) {
