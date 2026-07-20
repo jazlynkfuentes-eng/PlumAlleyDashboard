@@ -6,8 +6,11 @@ import {
 } from "@/lib/ai";
 import { scheduleNextSummaryBatch } from "@/lib/schedule-summary-regen";
 
-/** Keep each summary-regen request under Amplify timeout. */
-export const maxDuration = 60;
+/**
+ * Amplify Web Compute hard-caps SSR/API at ~30s; `maxDuration` is explicit
+ * for platforms that honor it (e.g. Vercel).
+ */
+export const maxDuration = 30;
 
 function authorized(req: Request) {
   const header = req.headers.get("authorization") ?? "";

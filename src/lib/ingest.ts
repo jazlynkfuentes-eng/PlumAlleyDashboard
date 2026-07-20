@@ -207,8 +207,13 @@ export async function ingestCompany(company: Company): Promise<IngestReport> {
   return report;
 }
 
-/** Companies per HTTP invocation — keep well under Amplify request timeout. */
-export const INGEST_BATCH_SIZE = 3;
+/**
+ * Companies per HTTP invocation.
+ * AWS Amplify Hosting Web Compute has a hard ~30s SSR/API timeout that cannot
+ * be raised via Next.js `maxDuration`. Batch size 1 keeps website fetches
+ * (AbortSignal ~20s) safely under that ceiling.
+ */
+export const INGEST_BATCH_SIZE = 1;
 
 type BatchRecord = {
   index: number;
@@ -629,6 +634,9 @@ async function processIngestBatch(
   if (!claim.ok) return claim.result;
 
   const { batchIndex, batchSlugs, batchStartedAt, totalBatches } = claim;
+  console.log(
+    `[ingest] batch ${batchIndex + 1}/${totalBatches} start · ${batchSlugs.join(", ")}`,
+  );
 
   const companiesRaw = await prisma.company.findMany({
     where: { slug: { in: batchSlugs } },
@@ -652,6 +660,9 @@ async function processIngestBatch(
   if (batchFatal) batchFailures.push(`batch_${batchIndex}: ${batchFatal}`);
 
   const finishedAt = new Date();
+  console.log(
+    `[ingest] batch ${batchIndex + 1}/${totalBatches} finish · ${finishedAt.getTime() - batchStartedAt.getTime()}ms · companies=${reports.length} failures=${batchFailures.length}`,
+  );
   const batchRecord: BatchRecord = {
     index: batchIndex,
     status: batchFatal ? "failed" : "completed",

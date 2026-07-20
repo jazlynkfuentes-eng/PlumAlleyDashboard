@@ -4,8 +4,11 @@ import { runDailyIngest } from "@/lib/ingest";
 import { scheduleNextIngestBatch } from "@/lib/schedule-ingest-batch";
 import { scheduleSummaryRegenAfterIngest } from "@/lib/schedule-summary-regen";
 
-/** Prefer staying under Amplify's request timeout; batches are small on purpose. */
-export const maxDuration = 60;
+/**
+ * Prefer staying under Amplify's hard ~30s Web Compute timeout.
+ * `maxDuration` is honored on Vercel; Amplify ignores/caps it at ~30s.
+ */
+export const maxDuration = 30;
 
 function authorized(req: Request) {
   const header = req.headers.get("authorization") ?? "";
