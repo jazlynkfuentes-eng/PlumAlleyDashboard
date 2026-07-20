@@ -28,46 +28,60 @@ export type CompanyCardData = {
   lastUpdated: Date | string | null;
 };
 
+/** Per-company badge color from DB seed (hex). Falls back to plum only when unset/invalid. */
+function resolveLogoBackground(logoColor?: string | null): string {
+  const trimmed = logoColor?.trim();
+  if (
+    trimmed &&
+    /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(trimmed)
+  ) {
+    return trimmed;
+  }
+  return "var(--plum)";
+}
+
 export function CompanyCard({ company }: { company: CompanyCardData }) {
   const initial = company.name.trim().charAt(0).toUpperCase() || "?";
-  const logoBg = company.logoColor || "var(--plum)";
+  const logoBg = resolveLogoBackground(company.logoColor);
 
   return (
-    <article className="group flex h-full flex-col rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--bg-secondary)] p-5 shadow-[var(--shadow-sm)] transition-[transform,box-shadow,background-color] duration-150 hover:-translate-y-px hover:bg-[var(--bg-tertiary)] hover:shadow-[var(--shadow-md)]">
-      <div className="flex items-start justify-between gap-3">
-        <Link
-          href={`/companies/${company.slug}`}
-          className="flex min-w-0 flex-1 items-start gap-3"
-        >
-          <span
-            className="flex h-9 w-9 shrink-0 items-center justify-center border border-[var(--border-strong)] text-sm font-bold text-[var(--white)]"
-            style={{ backgroundColor: logoBg }}
-            aria-hidden
-          >
-            {initial}
-          </span>
-          <span className="min-w-0">
-            <h3 className="font-display text-lg font-bold leading-tight group-hover:text-[var(--plum)]">
-              {company.name}
-            </h3>
-            <p className="mt-1 text-sm text-[var(--grey)]">{company.sector}</p>
-          </span>
-        </Link>
-        {company.todayCount > 0 && (
-          <span className="shrink-0 bg-[var(--plum)] px-2 py-0.5 text-xs font-medium text-[var(--white)]">
-            {company.todayCount} today
-          </span>
-        )}
+    <article className="group flex h-full min-h-0 w-full flex-col rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--bg-secondary)] p-5 shadow-[var(--shadow-sm)] transition-[transform,box-shadow,background-color] duration-150 hover:-translate-y-px hover:bg-[var(--bg-tertiary)] hover:shadow-[var(--shadow-md)]">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <span
+              className="flex h-9 w-9 shrink-0 items-center justify-center border border-[var(--border-strong)] text-sm font-bold text-[var(--white)]"
+              style={{ backgroundColor: logoBg }}
+              aria-hidden
+            >
+              {initial}
+            </span>
+            <Link
+              href={`/companies/${company.slug}`}
+              className="min-w-0 flex-1"
+            >
+              <h3 className="font-display text-lg font-bold leading-tight group-hover:text-[var(--plum)]">
+                {company.name}
+              </h3>
+              <p className="mt-1 text-sm text-[var(--grey)]">{company.sector}</p>
+            </Link>
+          </div>
+          {company.todayCount > 0 && (
+            <span className="shrink-0 bg-[var(--plum)] px-2 py-0.5 text-xs font-medium text-[var(--white)]">
+              {company.todayCount} today
+            </span>
+          )}
+        </div>
+
+        {company.description ? (
+          <p className="mt-3 text-sm leading-relaxed text-[var(--grey)]">
+            {company.description}
+          </p>
+        ) : null}
       </div>
 
-      {company.description ? (
-        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-[var(--grey)]">
-          {company.description}
-        </p>
-      ) : null}
-
-      <div className="mt-auto flex items-center justify-between gap-3 pt-5">
-        <div className="flex items-center gap-1">
+      <div className="mt-auto flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 pt-5">
+        <div className="flex min-w-0 flex-wrap items-center gap-1">
           {company.websiteUrl ? (
             <a
               href={company.websiteUrl}
@@ -97,7 +111,7 @@ export function CompanyCard({ company }: { company: CompanyCardData }) {
         </div>
         <Link
           href={`/companies/${company.slug}`}
-          className="text-xs text-[var(--text-muted)] hover:text-[var(--plum)]"
+          className="basis-full text-xs text-[var(--text-muted)] hover:text-[var(--plum)] sm:basis-auto sm:ml-auto sm:text-right"
         >
           Updated {formatRelativeShort(company.lastUpdated)}
         </Link>
@@ -116,9 +130,11 @@ export function CompanyGrid({ companies }: { companies: CompanyCardData[] }) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid auto-rows-fr grid-cols-1 items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {companies.map((c) => (
-        <CompanyCard key={c.slug} company={c} />
+        <div key={c.slug} className="flex h-full min-h-0 w-full">
+          <CompanyCard company={c} />
+        </div>
       ))}
     </div>
   );
