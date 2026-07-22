@@ -431,6 +431,58 @@ async function fetchCompanyUpdatesInWindow(
   });
 }
 
+/**
+ * Prefer the configured window; if empty, fall back to the most recent
+ * feed-visible posts so company pages with older activity still get a summary
+ * (the company feed itself is not window-limited).
+ */
+async function fetchUpdatesForIntelligenceSummary(
+  companyId: string,
+  windowDays: number,
+  take = 24,
+): Promise<{ updates: IntelligenceUpdate[]; usedFallback: boolean }> {
+  const inWindow = await fetchCompanyUpdatesInWindow(companyId, windowDays, take);
+  if (inWindow.length > 0) {
+    return { updates: inWindow, usedFallback: false };
+  }
+
+  const fallback = await prisma.update.findMany({
+    where: {
+      companyId,
+      OR: [
+        { sourceType: "linkedin", rawSource: { not: null } },
+        { sourceType: "website" },
+      ],
+    },
+    orderBy: { publishedAt: "desc" },
+    take,
+  });
+  return { updates: fallback, usedFallback: fallback.length > 0 };
+}
+
+function effectiveWindowDays(
+  requested: number,
+  updates: IntelligenceUpdate[],
+): number {
+  if (updates.length === 0) return requested;
+  const oldest = updates.reduce(
+    (min, u) => (u.publishedAt < min ? u.publishedAt : min),
+    updates[0]!.publishedAt,
+  );
+  const spanDays = Math.ceil(
+    (Date.now() - oldest.getTime()) / (24 * 60 * 60 * 1000),
+  );
+  return Math.max(requested, spanDays, 1);
+}
+
+function sectionsAreEmpty(sections: IntelligenceSections): boolean {
+  return !(
+    sections.happening?.trim() ||
+    sections.mattersBecause?.trim() ||
+    sections.comparedToPeers?.trim()
+  );
+}
+
 async function selectPeerCompanies(
   company: { id: string; sector: string },
   windowDays: number,
@@ -559,7 +611,10 @@ function offlineIntelligenceSections(
 export async function generateCompanyIntelligenceSummary(
   companyId: string,
   options?: { force?: boolean; windowDays?: number },
-): Promise<{ skipped: boolean; reason?: string } | { generated: true; id: string }> {
+): Promise<
+  | { skipped: true; reason: string }
+  | { generated: true; id: string; usedFallback: boolean; emptySections: boolean }
+> {
   const windowDays = options?.windowDays ?? DEFAULT_INTELLIGENCE_WINDOW_DAYS;
   const force = options?.force === true;
 
@@ -575,8 +630,18 @@ export async function generateCompanyIntelligenceSummary(
     }
   }
 
-  const updates = await fetchCompanyUpdatesInWindow(companyId, windowDays);
+  const { updates, usedFallback } = await fetchUpdatesForIntelligenceSummary(
+    companyId,
+    windowDays,
+  );
+  const storedWindowDays = effectiveWindowDays(windowDays, updates);
   const { peers, peerUpdates } = await selectPeerCompanies(company, windowDays);
+
+  if (usedFallback) {
+    console.log(
+      `[intelligence-summary] ${company.name}: no updates in last ${windowDays}d — falling back to ${updates.length} older feed post(s)`,
+    );
+  }
 
   const companyNames = new Map<string, string>([[company.id, company.name]]);
   for (const peer of peers) companyNames.set(peer.id, peer.name);
@@ -596,6 +661,10 @@ export async function generateCompanyIntelligenceSummary(
         ? `\n\nPeer companies (same sector: ${company.sector}):\n${peers.map((p) => `- ${p.name}`).join("\n")}\n\nPeer updates corpus:\n${peerCorpus}`
         : "\n\n(No sufficient peer activity in this window — omit section 3 entirely.)";
 
+    const windowNote = usedFallback
+      ? `Primary ${windowDays}-day window had no posts; corpus is the most recent stored feed activity (spanning ~${storedWindowDays} days).`
+      : `Window: last ${windowDays} days.`;
+
     try {
       const message = await client.messages.create({
         model: ANTHROPIC_MODEL,
@@ -607,7 +676,7 @@ export async function generateCompanyIntelligenceSummary(
 
 Company: ${company.name}
 Sector: ${company.sector}
-Window: last ${windowDays} days
+${windowNote}
 
 Use ONLY the updates below. Do not invent facts, funding rounds, hires, or events not supported by the text.
 
@@ -654,6 +723,20 @@ Rules:
       );
       throw err;
     }
+
+    // Claude sometimes returns {} when the prompt encourages omission — never
+    // persist a blank summary when we have real feed posts to synthesize.
+    if (sectionsAreEmpty(sections)) {
+      console.warn(
+        `[intelligence-summary] ${company.name}: Claude returned empty sections with ${updates.length} update(s) — using offline fallback`,
+      );
+      sections = offlineIntelligenceSections(
+        company.name,
+        updates,
+        peers,
+        peerUpdates,
+      );
+    }
   }
 
   const citedUpdateIds = updates.map((u) => u.id);
@@ -671,11 +754,18 @@ Rules:
         };
 
   const content = renderIntelligenceContent(sections);
+  const emptySections = sectionsAreEmpty(sections);
+  if (emptySections) {
+    console.warn(
+      `[intelligence-summary] ${company.name}: persisting empty summary (no feed posts available)`,
+    );
+  }
+
   const record = await prisma.companyIntelligenceSummary.upsert({
     where: { companyId },
     create: {
       companyId,
-      windowDays,
+      windowDays: storedWindowDays,
       content,
       sectionsJson: JSON.stringify(sections),
       citedUpdateIds: JSON.stringify(citedUpdateIds),
@@ -683,7 +773,7 @@ Rules:
       generatedAt: new Date(),
     },
     update: {
-      windowDays,
+      windowDays: storedWindowDays,
       content,
       sectionsJson: JSON.stringify(sections),
       citedUpdateIds: JSON.stringify(citedUpdateIds),
@@ -692,11 +782,22 @@ Rules:
     },
   });
 
-  return { generated: true, id: record.id };
+  return {
+    generated: true,
+    id: record.id,
+    usedFallback,
+    emptySections,
+  };
 }
 
 /** Companies per summary-regen HTTP request — keep under Amplify's ~30s ceiling. */
 export const SUMMARY_REGEN_BATCH_SIZE = 1;
+
+export type SummaryRegenFailure = {
+  companyId: string;
+  name: string;
+  error: string;
+};
 
 export type SummaryRegenBatchResult = {
   done: boolean;
@@ -704,6 +805,9 @@ export type SummaryRegenBatchResult = {
   processed: number;
   total: number;
   force: boolean;
+  generated: number;
+  skipped: number;
+  failed: SummaryRegenFailure[];
 };
 
 /**
@@ -724,11 +828,11 @@ export async function regenerateCompanyIntelligenceSummariesBatch(options?: {
   const companies = options?.companyIds?.length
     ? await prisma.company.findMany({
         where: { id: { in: options.companyIds } },
-        select: { id: true },
+        select: { id: true, name: true },
         orderBy: { name: "asc" },
       })
     : await prisma.company.findMany({
-        select: { id: true },
+        select: { id: true, name: true },
         orderBy: { name: "asc" },
       });
 
@@ -739,14 +843,30 @@ export async function regenerateCompanyIntelligenceSummariesBatch(options?: {
     `[intelligence-summary] regen batch offset=${offset} size=${slice.length}/${total} force=${force}`,
   );
 
-  for (const { id } of slice) {
+  let generated = 0;
+  let skipped = 0;
+  const failed: SummaryRegenFailure[] = [];
+
+  for (const { id, name } of slice) {
     try {
-      await generateCompanyIntelligenceSummary(id, { force });
+      const result = await generateCompanyIntelligenceSummary(id, { force });
+      if ("skipped" in result && result.skipped) {
+        skipped += 1;
+        console.log(
+          `[intelligence-summary] skipped ${name}: ${result.reason}`,
+        );
+      } else if ("generated" in result) {
+        generated += 1;
+        console.log(
+          `[intelligence-summary] generated ${name}` +
+            (result.usedFallback ? " (older-feed fallback)" : "") +
+            (result.emptySections ? " (empty — no posts)" : ""),
+        );
+      }
     } catch (e) {
-      console.error(
-        `[intelligence-summary] failed for ${id}:`,
-        e instanceof Error ? e.message : e,
-      );
+      const error = e instanceof Error ? e.message : String(e);
+      console.error(`[intelligence-summary] failed for ${name} (${id}):`, error);
+      failed.push({ companyId: id, name, error });
     }
   }
 
@@ -758,6 +878,9 @@ export async function regenerateCompanyIntelligenceSummariesBatch(options?: {
     processed: slice.length,
     total,
     force,
+    generated,
+    skipped,
+    failed,
   };
 }
 

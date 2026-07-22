@@ -80,6 +80,9 @@ export function RefreshButton({
       );
       let summaryOffset = 0;
       let summaryTotal = 0;
+      let summaryGenerated = 0;
+      let summarySkipped = 0;
+      const summaryFailures: string[] = [];
       for (;;) {
         const res = await fetch("/api/jobs/regenerate-summaries", {
           method: "POST",
@@ -99,16 +102,47 @@ export function RefreshButton({
           );
         }
         if (typeof data.total === "number") summaryTotal = data.total;
+        if (typeof data.generated === "number") summaryGenerated += data.generated;
+        if (typeof data.skipped === "number") summarySkipped += data.skipped;
+        if (Array.isArray(data.failed)) {
+          for (const f of data.failed) {
+            if (
+              f &&
+              typeof f === "object" &&
+              typeof (f as { name?: unknown }).name === "string" &&
+              typeof (f as { error?: unknown }).error === "string"
+            ) {
+              summaryFailures.push(
+                `${(f as { name: string }).name}: ${(f as { error: string }).error}`,
+              );
+            }
+          }
+        }
         if (data.done === true || data.nextOffset == null) break;
         summaryOffset = data.nextOffset as number;
         setMessage(
-          `Regenerating AI summaries · ${summaryOffset}/${summaryTotal}`,
+          `Regenerating AI summaries · ${summaryOffset}/${summaryTotal}` +
+            (summaryFailures.length
+              ? ` · ${summaryFailures.length} failed`
+              : ""),
         );
       }
 
+      const failNote = summaryFailures.length
+        ? ` · ${summaryFailures.length} failed (${summaryFailures.slice(0, 3).join("; ")}${summaryFailures.length > 3 ? "…" : ""})`
+        : "";
       setMessage(
-        `Updated ${total} companies · ${summaryTotal} AI summaries · ${new Date().toLocaleTimeString()}`,
+        `Updated ${total} companies · ${summaryGenerated} AI summaries` +
+          (summarySkipped ? ` · ${summarySkipped} skipped` : "") +
+          failNote +
+          ` · ${new Date().toLocaleTimeString()}`,
       );
+      if (summaryFailures.length) {
+        console.error(
+          "[refresh] intelligence summary failures:",
+          summaryFailures,
+        );
+      }
       router.refresh();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Refresh failed");

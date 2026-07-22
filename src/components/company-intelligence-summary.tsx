@@ -44,8 +44,9 @@ export function CompanyIntelligenceSummary({
   if (visible.length === 0) {
     return (
       <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-secondary)] px-5 py-4 text-[var(--grey)] shadow-[var(--shadow-sm)]">
-        No intelligence summary yet. Summaries are generated after daily ingest
-        when LinkedIn or website/news activity is available.
+        No intelligence summary content yet. If this company has posts in the
+        feed below, run Refresh now to regenerate — older posts outside the
+        default window are included as a fallback.
       </div>
     );
   }
