@@ -39,6 +39,9 @@ export async function ingestCompanyWebsite(
       ? company
       : { ...company, websiteUrl: company.newsFeedUrl };
 
+  const tAll = Date.now();
+  console.log(`[ingest:timing] ${company.slug} website start`);
+
   try {
     const preferredRaw = company.websiteFetchStrategy;
     const preferred =
@@ -48,13 +51,18 @@ export async function ingestCompanyWebsite(
       preferredRaw === "content_hash"
         ? preferredRaw
         : null;
+    const tFetch = Date.now();
     const result = await fetchCompanyWebsite({
       company: companyForFetch,
       preferredStrategy: preferred,
     });
+    console.log(
+      `[ingest:timing] ${company.slug} website.fetchCompanyWebsite · ${Date.now() - tFetch}ms · strategy=${result?.strategy ?? "null"} items=${result?.items.length ?? 0}`,
+    );
 
     if (!result) {
       report.strategy = "none";
+      const tUp = Date.now();
       await prisma.company.update({
         where: { id: company.id },
         data: {
@@ -63,6 +71,9 @@ export async function ingestCompanyWebsite(
           lastError: null,
         },
       });
+      console.log(
+        `[ingest:timing] ${company.slug} website.prisma.update(none) · ${Date.now() - tUp}ms · TOTAL=${Date.now() - tAll}ms`,
+      );
       return report;
     }
 
@@ -71,6 +82,7 @@ export async function ingestCompanyWebsite(
     // content_hash with no items = page unchanged
     if (result.strategy === "content_hash" && result.items.length === 0) {
       report.unchanged = true;
+      const tUp = Date.now();
       await prisma.company.update({
         where: { id: company.id },
         data: {
@@ -80,9 +92,13 @@ export async function ingestCompanyWebsite(
           lastError: null,
         },
       });
+      console.log(
+        `[ingest:timing] ${company.slug} website.prisma.update(unchanged) · ${Date.now() - tUp}ms · TOTAL=${Date.now() - tAll}ms`,
+      );
       return report;
     }
 
+    const tPersist = Date.now();
     for (const item of result.items) {
       const excerpt = (item.excerpt || item.title || item.content || "")
         .replace(/\s+/g, " ")
@@ -113,7 +129,11 @@ export async function ingestCompanyWebsite(
 
       if (row.ok && row.inserted) report.website += 1;
     }
+    console.log(
+      `[ingest:timing] ${company.slug} website.persist · ${Date.now() - tPersist}ms · inserted=${report.website}`,
+    );
 
+    const tUp = Date.now();
     await prisma.company.update({
       where: { id: company.id },
       data: {
@@ -124,6 +144,9 @@ export async function ingestCompanyWebsite(
         lastError: null,
       },
     });
+    console.log(
+      `[ingest:timing] ${company.slug} website.prisma.update · ${Date.now() - tUp}ms`,
+    );
   } catch (e) {
     report.error = `Website: ${e instanceof Error ? e.message : "failed"}`;
     report.strategy = "none";
@@ -136,5 +159,8 @@ export async function ingestCompanyWebsite(
     });
   }
 
+  console.log(
+    `[ingest:timing] ${company.slug} website TOTAL · ${Date.now() - tAll}ms · strategy=${report.strategy} error=${report.error ?? "none"}`,
+  );
   return report;
 }

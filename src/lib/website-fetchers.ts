@@ -6,6 +6,47 @@ import { coercePublishedAt, type CoercedPublish } from "@/lib/utils";
 
 const rssParser = new Parser();
 
+/** Per RSS/Atom probe — Amplify's ~30s request budget cannot survive sequential DNS hangs. */
+const RSS_PARSE_TIMEOUT_MS = 8000;
+/** Hard ceiling for the whole RSS strategy (all candidate feeds). */
+const RSS_STRATEGY_BUDGET_MS = 12000;
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  label: string,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`${label} timeout after ${timeoutMs}ms`)),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+function hostOf(url: string): string | null {
+  try {
+    return new URL(url).host.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+function isUnreachableHostError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /ENOTFOUND|EAI_AGAIN|ERR_NAME_NOT_RESOLVED|getaddrinfo|timeout after/i.test(
+    msg,
+  );
+}
+
 export type WebsiteStrategyName =
   | "rss"
   | "sitemap"
@@ -115,6 +156,7 @@ function originBase(url: string) {
 }
 
 async function fetchText(url: string, accept = "text/html,application/xml") {
+  const t0 = Date.now();
   const res = await fetch(url, {
     headers: {
       "User-Agent":
@@ -125,8 +167,12 @@ async function fetchText(url: string, accept = "text/html,application/xml") {
     redirect: "follow",
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+  const text = await res.text();
+  console.log(
+    `[ingest:timing] fetchText · ${Date.now() - t0}ms · ${res.status} · ${url.slice(0, 120)}`,
+  );
   return {
-    text: await res.text(),
+    text,
     finalUrl: res.url,
     contentType: res.headers.get("content-type") ?? "",
   };
@@ -208,11 +254,30 @@ export async function fetchViaRss(
   }
 
   const batches: WebsiteFetchItem[][] = [];
+  let rssAttempts = 0;
+  let rssHits = 0;
+  const deadHosts = new Set<string>();
+  const strategyStarted = Date.now();
 
   for (const feedUrl of candidates) {
+    if (Date.now() - strategyStarted >= RSS_STRATEGY_BUDGET_MS) {
+      console.log(
+        `[ingest:timing] ${company.slug} rss budget exhausted · ${Date.now() - strategyStarted}ms · stopping remaining candidates`,
+      );
+      break;
+    }
     if (!isAllowedCompanyUrl(feedUrl, company)) continue;
+    const host = hostOf(feedUrl);
+    if (host && deadHosts.has(host)) continue;
+
+    rssAttempts += 1;
+    const tFeed = Date.now();
     try {
-      const feed = await rssParser.parseURL(feedUrl);
+      const feed = await withTimeout(
+        rssParser.parseURL(feedUrl),
+        RSS_PARSE_TIMEOUT_MS,
+        `rss.parseURL ${feedUrl.slice(0, 80)}`,
+      );
       const items: WebsiteFetchItem[] = [];
       for (const item of feed.items ?? []) {
         const link = item.link;
@@ -237,11 +302,30 @@ export async function fetchViaRss(
           }),
         );
       }
-      if (items.length > 0) batches.push(items);
-    } catch {
+      console.log(
+        `[ingest:timing] ${company.slug} rss.parseURL · ${Date.now() - tFeed}ms · items=${items.length} · ${feedUrl.slice(0, 120)}`,
+      );
+      if (items.length > 0) {
+        rssHits += 1;
+        batches.push(items);
+      }
+    } catch (e) {
+      console.log(
+        `[ingest:timing] ${company.slug} rss.parseURL fail · ${Date.now() - tFeed}ms · ${feedUrl.slice(0, 120)} · ${e instanceof Error ? e.message : "err"}`,
+      );
+      if (host && isUnreachableHostError(e)) {
+        deadHosts.add(host);
+        console.log(
+          `[ingest:timing] ${company.slug} rss dead-host skip · ${host}`,
+        );
+      }
       continue;
     }
   }
+
+  console.log(
+    `[ingest:timing] ${company.slug} rss strategy · attempts=${rssAttempts} hits=${rssHits} mergedCandidates=${candidates.size} deadHosts=${deadHosts.size} elapsed=${Date.now() - strategyStarted}ms`,
+  );
 
   const merged = mergeItems(batches, 40);
   if (merged.length === 0) return null;
@@ -559,14 +643,21 @@ export async function fetchCompanyWebsite(
 
   for (const name of order) {
     try {
+      const tStrat = Date.now();
       const result = await STRATEGY_FN[name](company);
+      console.log(
+        `[ingest:timing] ${company.slug} strategy.${name} · ${Date.now() - tStrat}ms · items=${result?.items.length ?? 0}`,
+      );
       if (result && (result.items.length > 0 || name === "content_hash")) {
         if (name === "content_hash" && result.items.length === 0) {
           return result;
         }
         if (result.items.length > 0) return result;
       }
-    } catch {
+    } catch (e) {
+      console.log(
+        `[ingest:timing] ${company.slug} strategy.${name} threw · ${e instanceof Error ? e.message : "err"}`,
+      );
       continue;
     }
   }

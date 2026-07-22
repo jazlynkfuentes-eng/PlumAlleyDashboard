@@ -33,6 +33,12 @@ async function fetchLinkedInCompanyPagePosts(company: Company) {
 
   const companyUrl = normalizeLinkedInCompanyUrl(company.linkedinUrl);
   const client = new ApifyClient({ token });
+  const t0 = Date.now();
+  // Amplify Hosting Web Compute hard-caps ~30s — never wait longer than that.
+  const apifyWaitSecs = 15;
+  console.log(
+    `[ingest:timing] ${company.slug} apify.actor.call start · waitSecs=${apifyWaitSecs}`,
+  );
 
   const run = await client.actor("harvestapi/linkedin-company-posts").call(
     {
@@ -42,10 +48,17 @@ async function fetchLinkedInCompanyPagePosts(company: Company) {
       scrapeReactions: false,
       scrapeComments: false,
     },
-    { waitSecs: 180 },
+    { waitSecs: apifyWaitSecs },
+  );
+  console.log(
+    `[ingest:timing] ${company.slug} apify.actor.call done · ${Date.now() - t0}ms`,
   );
 
+  const t1 = Date.now();
   const { items } = await client.dataset(run.defaultDatasetId).listItems();
+  console.log(
+    `[ingest:timing] ${company.slug} apify.dataset.listItems done · ${Date.now() - t1}ms · items=${items.length}`,
+  );
   const mapped: MappedLinkedInItem[] = [];
   let filtered = 0;
 
@@ -121,24 +134,39 @@ export async function ingestCompanyLinkedIn(
     linkedinFiltered: 0,
     error: undefined as string | undefined,
   };
+  const tAll = Date.now();
 
   if (!company.linkedinUrl) {
+    console.log(
+      `[ingest:timing] ${company.slug} linkedin skip · no linkedinUrl · ${Date.now() - tAll}ms`,
+    );
     return report;
   }
 
   if (!process.env.APIFY_TOKEN) {
     // n8n → /api/updates/linkedin is the primary LinkedIn path; silent skip
+    console.log(
+      `[ingest:timing] ${company.slug} linkedin skip · no APIFY_TOKEN · ${Date.now() - tAll}ms`,
+    );
     return report;
   }
 
   // Skip in-app Apify if LINKEDIN_VIA_APP is explicitly "0" (n8n-only mode)
   if (process.env.LINKEDIN_VIA_APP === "0") {
+    console.log(
+      `[ingest:timing] ${company.slug} linkedin skip · LINKEDIN_VIA_APP=0 · ${Date.now() - tAll}ms`,
+    );
     return report;
   }
 
   try {
+    const tFetch = Date.now();
     const { items, filtered } = await fetchLinkedInCompanyPagePosts(company);
+    console.log(
+      `[ingest:timing] ${company.slug} linkedin.fetch done · ${Date.now() - tFetch}ms · mapped=${items.length} filtered=${filtered}`,
+    );
     report.linkedinFiltered = filtered;
+    const tPersist = Date.now();
     for (const item of items) {
       const row = await ingestUpdateRow({
         companyId: company.id,
@@ -155,6 +183,9 @@ export async function ingestCompanyLinkedIn(
       });
       if (row.ok && row.inserted) report.linkedin += 1;
     }
+    console.log(
+      `[ingest:timing] ${company.slug} linkedin.persist done · ${Date.now() - tPersist}ms · inserted=${report.linkedin}`,
+    );
 
     await prisma.company.update({
       where: { id: company.id },
@@ -162,7 +193,11 @@ export async function ingestCompanyLinkedIn(
     });
 
     try {
+      const tSum = Date.now();
       await generateCompanySummary(company.id);
+      console.log(
+        `[ingest:timing] ${company.slug} linkedin.generateCompanySummary done · ${Date.now() - tSum}ms`,
+      );
     } catch {
       /* optional */
     }
@@ -174,11 +209,16 @@ export async function ingestCompanyLinkedIn(
     });
   }
 
+  console.log(
+    `[ingest:timing] ${company.slug} linkedin.total · ${Date.now() - tAll}ms · error=${report.error ?? "none"}`,
+  );
   return report;
 }
 
 /** Combined LinkedIn (optional Apify) + website fetch for one company. */
 export async function ingestCompany(company: Company): Promise<IngestReport> {
+  const tAll = Date.now();
+  console.log(`[ingest:timing] ${company.slug} ingestCompany start`);
   const report: IngestReport = {
     companySlug: company.slug,
     linkedin: 0,
@@ -190,20 +230,31 @@ export async function ingestCompany(company: Company): Promise<IngestReport> {
   const errors: string[] = [];
 
   if (company.linkedinUrl) {
+    const tLi = Date.now();
     const li = await ingestCompanyLinkedIn(company);
+    console.log(
+      `[ingest:timing] ${company.slug} ingestCompany.linkedin section · ${Date.now() - tLi}ms`,
+    );
     report.linkedin = li.linkedin;
     report.linkedinFiltered = li.linkedinFiltered;
     if (li.error) errors.push(li.error);
   }
 
   if (company.websiteUrl || company.newsFeedUrl) {
+    const tWeb = Date.now();
     const web: WebsiteIngestReport = await ingestCompanyWebsite(company);
+    console.log(
+      `[ingest:timing] ${company.slug} ingestCompany.website section · ${Date.now() - tWeb}ms · strategy=${web.strategy ?? "null"} inserted=${web.website}`,
+    );
     report.website = web.website;
     report.websiteStrategy = web.strategy;
     if (web.error) errors.push(web.error);
   }
 
   if (errors.length) report.error = errors.join(" · ");
+  console.log(
+    `[ingest:timing] ${company.slug} ingestCompany TOTAL · ${Date.now() - tAll}ms · error=${report.error ?? "none"}`,
+  );
   return report;
 }
 
@@ -370,19 +421,38 @@ async function runSingleCompanyIngest(
   companySlug: string,
   options?: { skipSummaryRegen?: boolean },
 ): Promise<DailyIngestResult> {
+  const tAll = Date.now();
+  console.log(
+    `[ingest:timing] runSingleCompanyIngest start · slug=${companySlug} skipSummaryRegen=${options?.skipSummaryRegen === true}`,
+  );
+
+  const tCreate = Date.now();
   const run = await prisma.ingestRun.create({
     data: { status: "running" },
   });
+  console.log(
+    `[ingest:timing] ${companySlug} prisma.ingestRun.create · ${Date.now() - tCreate}ms · runId=${run.id}`,
+  );
 
+  const tFind = Date.now();
   const companies = await prisma.company.findMany({
     where: companyIngestWhere(companySlug),
     orderBy: { name: "asc" },
   });
+  console.log(
+    `[ingest:timing] ${companySlug} prisma.company.findMany · ${Date.now() - tFind}ms · rows=${companies.length}`,
+  );
+
+  const tIngest = Date.now();
   const reports = await ingestCompaniesSequential(companies);
+  console.log(
+    `[ingest:timing] ${companySlug} ingestCompaniesSequential · ${Date.now() - tIngest}ms`,
+  );
   const failures = reports
     .filter((r) => r.error)
     .map((r) => `${r.companySlug}: ${r.error}`);
 
+  const tUpdate = Date.now();
   await prisma.ingestRun.update({
     where: { id: run.id },
     data: {
@@ -413,15 +483,26 @@ async function runSingleCompanyIngest(
       }),
     },
   });
+  console.log(
+    `[ingest:timing] ${companySlug} prisma.ingestRun.update · ${Date.now() - tUpdate}ms`,
+  );
 
   // Client-driven full-portfolio refresh regenerates summaries in a separate
   // HTTP loop — awaiting LLM here routinely exceeds Amplify's ~30s ceiling.
   if (companies.length > 0 && !options?.skipSummaryRegen) {
+    const tSum = Date.now();
     await regenerateCompanyIntelligenceSummaries({
       force: true,
       companyIds: companies.map((c) => c.id),
     });
+    console.log(
+      `[ingest:timing] ${companySlug} regenerateCompanyIntelligenceSummaries · ${Date.now() - tSum}ms`,
+    );
   }
+
+  console.log(
+    `[ingest:timing] runSingleCompanyIngest TOTAL · slug=${companySlug} · ${Date.now() - tAll}ms`,
+  );
 
   return {
     runId: run.id,
